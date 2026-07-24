@@ -13,7 +13,8 @@ import { createServerSupabase } from "../lib/supabase";
 import { checkProjectAccess, filterAccessibleDocumentIds } from "../lib/access";
 import { can } from "../lib/rbac";
 import { getUserApiKeys } from "../lib/userApiKeys";
-import { resolveModel, DEFAULT_MAIN_MODEL } from "../lib/llm";
+import { DEFAULT_MAIN_MODEL } from "../lib/llm";
+import { resolveModelForUser } from "../lib/modelAccess";
 import { planRun, sanitizePlan } from "../lib/agents/planner";
 import { planNeedsApproval, roleToolsets } from "../lib/agents/types";
 import type { AgentPlan } from "../lib/agents/types";
@@ -109,7 +110,12 @@ agentsRouter.post("/", requireAuth, async (req, res) => {
     userEmail,
     db,
   );
-  const model = resolveModel(req.body?.model, DEFAULT_MAIN_MODEL);
+  const model = await resolveModelForUser(
+    db,
+    userId,
+    req.body?.model,
+    DEFAULT_MAIN_MODEL,
+  );
 
   const kind =
     req.body?.kind === "draft_from_precedent"

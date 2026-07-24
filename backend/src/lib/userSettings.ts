@@ -1,11 +1,11 @@
 import { createServerSupabase } from "./supabase";
 import {
-    resolveModel,
     DEFAULT_TITLE_MODEL,
     DEFAULT_TABULAR_MODEL,
     OPENAI_LOW_MODELS,
     type UserApiKeys,
 } from "./llm";
+import { resolveModelForUser } from "./modelAccess";
 import { getUserApiKeys as getStoredUserApiKeys } from "./userApiKeys";
 
 export type UserModelSettings = {
@@ -39,8 +39,18 @@ export async function getUserModelSettings(
     const api_keys = await getStoredUserApiKeys(userId, client);
 
     return {
-        title_model: resolveModel(data?.title_model, resolveTitleModel(api_keys)),
-        tabular_model: resolveModel(data?.tabular_model, DEFAULT_TABULAR_MODEL),
+        title_model: await resolveModelForUser(
+            client,
+            userId,
+            data?.title_model,
+            resolveTitleModel(api_keys),
+        ),
+        tabular_model: await resolveModelForUser(
+            client,
+            userId,
+            data?.tabular_model,
+            DEFAULT_TABULAR_MODEL,
+        ),
         legal_research_us:
             (data as { legal_research_us?: boolean | null } | null)
                 ?.legal_research_us !== false,

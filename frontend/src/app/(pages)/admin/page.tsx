@@ -15,8 +15,14 @@ import {
     ChevronDown,
     ChevronUp,
     Scale,
+    Cpu,
+    Check,
 } from "lucide-react";
 import { useUserProfile } from "@/app/contexts/UserProfileContext";
+import {
+    SETTINGS_MODELS,
+    type ModelOption,
+} from "@/app/components/assistant/ModelToggle";
 import {
     adminListUsers,
     adminRemoveUser,
@@ -100,6 +106,13 @@ export default function AdminPage() {
     const [orgContextSaved, setOrgContextSaved] = useState(false);
     const [savingJade, setSavingJade] = useState(false);
 
+    // Student model access — site-wide allow-list for student-group members.
+    // Null = unrestricted (every model shown).
+    const [studentAllowedModels, setStudentAllowedModels] = useState<
+        string[] | null
+    >(null);
+    const [savingModels, setSavingModels] = useState(false);
+
     // Per-project organisational context
     const [projectContexts, setProjectContexts] = useState<
         AdminProjectContext[]
@@ -133,6 +146,7 @@ export default function AdminPage() {
             setOrgContext(
                 (settingsData as { orgContext?: string }).orgContext ?? "",
             );
+            setStudentAllowedModels(settingsData.studentAllowedModels ?? null);
             setProjectContexts(projectCtx);
             setEmailStatus(emailStatusData);
         } catch {
@@ -217,6 +231,44 @@ export default function AdminPage() {
             setJadeApproved(previous); // revert on failure
         } finally {
             setSavingJade(false);
+        }
+    };
+
+    const handleToggleModel = async (modelId: string) => {
+        if (savingModels) return;
+        const current = studentAllowedModels ?? [];
+        const next = current.includes(modelId)
+            ? current.filter((id) => id !== modelId)
+            : [...current, modelId];
+        setSavingModels(true);
+        const previous = studentAllowedModels;
+        setStudentAllowedModels(next.length > 0 ? next : null); // optimistic
+        try {
+            const res = await adminUpdateSettings({
+                studentAllowedModels: next,
+            });
+            setStudentAllowedModels(res.studentAllowedModels ?? null);
+        } catch {
+            setStudentAllowedModels(previous); // revert on failure
+        } finally {
+            setSavingModels(false);
+        }
+    };
+
+    const handleClearModelRestriction = async () => {
+        if (savingModels || studentAllowedModels === null) return;
+        setSavingModels(true);
+        const previous = studentAllowedModels;
+        setStudentAllowedModels(null); // optimistic
+        try {
+            const res = await adminUpdateSettings({
+                studentAllowedModels: null,
+            });
+            setStudentAllowedModels(res.studentAllowedModels ?? null);
+        } catch {
+            setStudentAllowedModels(previous);
+        } finally {
+            setSavingModels(false);
         }
     };
 
@@ -307,7 +359,7 @@ export default function AdminPage() {
                             Collaboration Portal
                         </h1>
                         <p className="text-sm text-gray-500">
-                            Manage who has access to this Mike OSS instance
+                            Manage who has access to this Rose instance
                         </p>
                     </div>
                 </div>
@@ -457,6 +509,88 @@ export default function AdminPage() {
                         {jadeApproved
                             ? "Citations are verified automatically via Jade.io, falling back to human verification on AustLII only if Jade.io fails."
                             : "Default: citations are verified by you on AustLII (opens in a new tab for you to search). No automated Jade.io access is used."}
+                    </p>
+                </div>
+
+                {/* Student model access — site-wide model allow-list for
+                    every member of any student group */}
+                <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <Cpu className="h-4 w-4 text-gray-500" />
+                            <h2 className="text-sm font-semibold text-gray-900">
+                                Student model access
+                            </h2>
+                        </div>
+                        {studentAllowedModels !== null && (
+                            <button
+                                onClick={() => void handleClearModelRestriction()}
+                                disabled={savingModels}
+                                className="text-xs font-medium text-gray-500 hover:text-gray-800 disabled:opacity-50"
+                            >
+                                Remove restriction
+                            </button>
+                        )}
+                    </div>
+                    <p className="mb-3 text-sm text-gray-500">
+                        Limit which models are available to everyone who is a
+                        member of a student group (instructors are never
+                        restricted). Tick the models students may use; leave
+                        all unticked for no restriction (every model
+                        available, the default).
+                    </p>
+                    <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                        {(
+                            ["Anthropic", "Google", "OpenAI", "Moonshot"] as const
+                        ).map((group) => {
+                            const items = SETTINGS_MODELS.filter(
+                                (m: ModelOption) => m.group === group,
+                            );
+                            if (items.length === 0) return null;
+                            return (
+                                <div key={group}>
+                                    <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                                        {group}
+                                    </p>
+                                    <div className="space-y-1">
+                                        {items.map((m) => {
+                                            const checked =
+                                                studentAllowedModels?.includes(
+                                                    m.id,
+                                                ) ?? false;
+                                            return (
+                                                <button
+                                                    key={m.id}
+                                                    onClick={() =>
+                                                        void handleToggleModel(m.id)
+                                                    }
+                                                    disabled={savingModels}
+                                                    className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                                >
+                                                    <span
+                                                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                                            checked
+                                                                ? "border-gray-900 bg-gray-900 text-white"
+                                                                : "border-gray-300 bg-white"
+                                                        }`}
+                                                    >
+                                                        {checked && (
+                                                            <Check className="h-3 w-3" />
+                                                        )}
+                                                    </span>
+                                                    {m.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <p className="mt-3 text-xs text-gray-500">
+                        {studentAllowedModels === null
+                            ? "No restriction — students see every model."
+                            : `Students can use ${studentAllowedModels.length} of ${SETTINGS_MODELS.length} models.`}
                     </p>
                 </div>
 

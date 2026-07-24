@@ -229,6 +229,9 @@ export interface UserProfile {
     mfaOnLogin: boolean;
     legalResearchUs: boolean;
     isAdmin: boolean;
+    /** Admin-configured student model restriction, resolved for this user.
+     * Null = unrestricted (not a student-group member, or no restriction set). */
+    allowedModelIds: string[] | null;
     apiKeyStatus: ApiKeyStatus;
 }
 
@@ -320,6 +323,9 @@ export async function adminGetCosts(
 
 export interface AdminSettings {
     jadeAccessApproved: boolean;
+    /** Site-wide model allow-list applied to every student-group member.
+     * Null (or omitted) = unrestricted. */
+    studentAllowedModels?: string[] | null;
 }
 
 export async function adminGetSettings(): Promise<AdminSettings> {

@@ -432,6 +432,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                                 value={model}
                                 onChange={setModel}
                                 apiKeys={apiKeys}
+                                allowedIds={profile?.allowedModelIds}
                             />
                             <button
                                 type="button"

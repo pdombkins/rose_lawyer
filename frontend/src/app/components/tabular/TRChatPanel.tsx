@@ -451,6 +451,7 @@ function TRChatInput({
     apiKeys?: ApiKeyState;
     onHeightChange: (height: number) => void;
 }) {
+    const { profile } = useUserProfile();
     const [value, setValue] = useState("");
     const rootRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -533,6 +534,7 @@ function TRChatInput({
                         value={model}
                         onChange={onModelChange}
                         apiKeys={apiKeys}
+                        allowedIds={profile?.allowedModelIds}
                     />
                     <button
                         type="button"

@@ -32,6 +32,9 @@ interface UserProfile {
     mfaOnLogin: boolean;
     legalResearchUs: boolean;
     isAdmin: boolean;
+    /** Admin-configured student model restriction, resolved for this user.
+     * Null = unrestricted. */
+    allowedModelIds: string[] | null;
     apiKeys: ApiKeyState;
 }
 
@@ -126,6 +129,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
                 tabularModel: "gemini-3-flash-preview",
                 mfaOnLogin: false,
                 legalResearchUs: true,
+                allowedModelIds: null,
                 apiKeys: emptyApiKeys(),
             });
         } finally {

@@ -57,10 +57,16 @@ interface Props {
     value: string;
     onChange: (id: string) => void;
     apiKeys?: ApiKeyState;
+    /** Admin-configured student model restriction (from profile.allowedModelIds).
+     * Null/undefined = no restriction, show every model. */
+    allowedIds?: string[] | null;
 }
 
-export function ModelToggle({ value, onChange, apiKeys }: Props) {
+export function ModelToggle({ value, onChange, apiKeys, allowedIds }: Props) {
     const [isOpen, setIsOpen] = useState(false);
+    const visibleModels = allowedIds
+        ? MODELS.filter((m) => allowedIds.includes(m.id))
+        : MODELS;
     const selected = MODELS.find((m) => m.id === value);
     const selectedLabel = selected?.label ?? "Model";
     const selectedAvailable = apiKeys
@@ -94,7 +100,7 @@ export function ModelToggle({ value, onChange, apiKeys }: Props) {
                 align="end"
             >
                 {GROUP_ORDER.map((group, gi) => {
-                    const items = MODELS.filter((m) => m.group === group);
+                    const items = visibleModels.filter((m) => m.group === group);
                     if (items.length === 0) return null;
                     return (
                         <div key={group}>

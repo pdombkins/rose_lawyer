@@ -1,10 +1,10 @@
 import {
   streamChatWithTools,
-  resolveModel,
   DEFAULT_MAIN_MODEL,
   type LlmMessage,
   type OpenAIToolSchema,
 } from "../llm";
+import { resolveModelForUser } from "../modelAccess";
 import { safeErrorMessage } from "../safeError";
 import { createServerSupabase } from "../supabase";
 import {
@@ -392,7 +392,12 @@ export async function runLLMStream(params: {
     }
   };
 
-  const selectedModel = resolveModel(model, DEFAULT_MAIN_MODEL);
+  const selectedModel = await resolveModelForUser(
+    db,
+    userId,
+    model,
+    DEFAULT_MAIN_MODEL,
+  );
   let llmResult:
     | Awaited<ReturnType<typeof streamChatWithTools>>
     | undefined;

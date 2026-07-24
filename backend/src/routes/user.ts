@@ -9,6 +9,7 @@ import {
     OPENAI_LOW_MODELS,
     resolveModel,
 } from "../lib/llm";
+import { allowedModelIdsForUser } from "../lib/modelAccess";
 import {
     type ApiKeyStatus,
     getUserApiKeyStatus,
@@ -530,7 +531,11 @@ async function loadProfile(
         row = resetData as UserProfileRow;
     }
 
-    return { data: serializeProfile(row, options.apiKeyStatus), error: null };
+    const allowedModelIds = await allowedModelIdsForUser(db, userId);
+    return {
+        data: { ...serializeProfile(row, options.apiKeyStatus), allowedModelIds },
+        error: null,
+    };
 }
 
 // POST /user/profile
@@ -578,6 +583,31 @@ userRouter.patch("/profile", requireAuth, async (req, res) => {
     if (!parsed.ok) return void res.status(400).json({ detail: parsed.detail });
 
     const db = createServerSupabase();
+
+    // Student model access — a restricted student can't set a preferred
+    // title/tabular model outside the admin-configured allow-list.
+    if (parsed.update.tabular_model || parsed.update.title_model) {
+        const allowed = await allowedModelIdsForUser(db, userId);
+        if (allowed) {
+            if (
+                parsed.update.tabular_model &&
+                !allowed.includes(parsed.update.tabular_model)
+            ) {
+                return void res
+                    .status(403)
+                    .json({ detail: "This model isn't available on your account." });
+            }
+            if (
+                parsed.update.title_model &&
+                !allowed.includes(parsed.update.title_model)
+            ) {
+                return void res
+                    .status(403)
+                    .json({ detail: "This model isn't available on your account." });
+            }
+        }
+    }
+
     const ensureError = await ensureProfileRow(db, userId);
     if (ensureError)
         return void res.status(500).json({ detail: ensureError.message });

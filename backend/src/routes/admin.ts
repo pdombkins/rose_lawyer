@@ -30,6 +30,11 @@ import {
 import { attachActiveVersionPaths } from "../lib/documentVersions";
 import { linksByDocument, setDocumentLinks } from "../lib/documentLinks";
 import { linksByFolder, setFolderLinks } from "../lib/folderLinks";
+import {
+  getStudentAllowedModels,
+  setStudentAllowedModels,
+} from "../lib/modelAccess";
+import { MODEL_REGISTRY } from "../lib/llm";
 import { isEmailConfigured, sendEmail, escapeHtml } from "../lib/email";
 
 export const adminRouter = Router();
@@ -249,7 +254,8 @@ adminRouter.delete("/invitations/:id", async (req, res) => {
 adminRouter.get("/settings", async (_req, res) => {
   const jadeAccessApproved = await getJadeAccessApproved();
   const orgContext = await getAppSetting<string>("org_context", "");
-  res.json({ jadeAccessApproved, orgContext });
+  const studentAllowedModels = await getStudentAllowedModels();
+  res.json({ jadeAccessApproved, orgContext, studentAllowedModels });
 });
 
 // ── PUT /admin/settings ───────────────────────────────────────────────────────
@@ -277,6 +283,27 @@ adminRouter.put("/settings", async (req, res) => {
       res.locals.userId as string,
     );
     updates.orgContext = body.orgContext.slice(0, 20_000);
+  }
+  // Student model access — site-wide allow-list applied to every member of
+  // any student group. `null` (or an empty array) lifts the restriction.
+  if ("studentAllowedModels" in body) {
+    const raw = body.studentAllowedModels;
+    if (raw !== null && !Array.isArray(raw)) {
+      return void res.status(400).json({
+        detail: "studentAllowedModels must be an array of model ids, or null",
+      });
+    }
+    const validIds = new Set(MODEL_REGISTRY.map((m) => m.id));
+    const modelIds = Array.isArray(raw)
+      ? raw.filter(
+          (v): v is string => typeof v === "string" && validIds.has(v),
+        )
+      : null;
+    await setStudentAllowedModels(
+      modelIds,
+      res.locals.userId as string,
+    );
+    updates.studentAllowedModels = modelIds && modelIds.length > 0 ? modelIds : null;
   }
   if (Object.keys(updates).length === 0) {
     return void res
