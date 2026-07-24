@@ -37,8 +37,7 @@ clausesRouter.get("/", requireAuth, async (req, res) => {
       "id, title, agreement_type, body, guidance, tags, source_document_id, project_id, created_at",
     )
     .eq("owner_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(200);
+    .order("created_at", { ascending: false });
   if (error) return void res.status(500).json({ detail: error.message });
   res.json({ clauses: data ?? [] });
 });

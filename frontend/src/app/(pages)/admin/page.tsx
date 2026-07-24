@@ -312,12 +312,11 @@ export default function AdminPage() {
                     </div>
                 </div>
 
-                {/* New admin surfaces (C004/C019/C036/C033) */}
+                {/* New admin surfaces (C004/C019/C033) */}
                 <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {[
                         ["/admin/analytics", "Command Center", "Adoption analytics, spend, cohorts"],
                         ["/admin/audit", "Audit trail", "Every tool call and access event"],
-                        ["/admin/knowledge", "Workspace knowledge", "All playbooks, KB docs, clauses"],
                         ["/admin/documents", "Documents", "Share Library documents to projects centrally"],
                         ["/admin/groups", "Student groups", "Bulk-invite a class, manage access as a group"],
                     ].map(([href, title, desc]) => (

@@ -2247,16 +2247,6 @@ export async function adminGetAudit(params?: {
     return apiRequest(`/admin/audit${q ? `?${q}` : ""}`);
 }
 
-export type AdminKnowledge = {
-    playbooks: { id: string; name: string; agreement_type: string | null; owner_email: string; rule_count: number; updated_at: string }[];
-    kb_documents: { id: string; title: string; doc_type: string; owner_email: string; chunk_count: number; created_at: string }[];
-    clauses: { id: string; title: string; agreement_type: string | null; owner_email: string; created_at: string }[];
-};
-
-export async function adminGetKnowledge(): Promise<AdminKnowledge> {
-    return apiRequest(`/admin/knowledge`);
-}
-
 export async function exportOutput(input: {
     title?: string;
     content: string;

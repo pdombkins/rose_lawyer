@@ -76,8 +76,8 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
     }, [pathname]);
     const [shouldAnimate, setShouldAnimate] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [projectsCollapsed, setProjectsCollapsed] = useState(false);
-    const [historyCollapsed, setHistoryCollapsed] = useState(false);
+    const [projectsCollapsed, setProjectsCollapsed] = useState(true);
+    const [historyCollapsed, setHistoryCollapsed] = useState(true);
     const [projectNames, setProjectNames] = useState<Record<string, string>>(
         {},
     );

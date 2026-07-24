@@ -26,7 +26,7 @@ import {
 } from "../lib/appSettings";
 import { attachActiveVersionPaths } from "../lib/documentVersions";
 import { linksByDocument, setDocumentLinks } from "../lib/documentLinks";
-import { isEmailConfigured, sendEmail } from "../lib/email";
+import { isEmailConfigured, sendEmail, escapeHtml } from "../lib/email";
 
 export const adminRouter = Router();
 
@@ -122,31 +122,82 @@ adminRouter.delete("/users/:userId", async (req, res) => {
 
 // ── POST /admin/invite ────────────────────────────────────────────────────────
 
+/** Branded invitation email body containing the Supabase action link.
+ * Mirrors the group-invite email in routes/groups.ts. */
+function adminInviteEmailHtml(actionLink: string): string {
+  return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;color:#111827;line-height:1.5">
+  <h2 style="margin:0 0 12px">You're invited to Rose</h2>
+  <p>You've been invited to Rose — an AI legal assistant for research and educational use.</p>
+  <p>Click below to set up your account and get started:</p>
+  <p style="margin:20px 0">
+    <a href="${actionLink}" style="display:inline-block;background:#111827;color:#ffffff;padding:11px 20px;border-radius:6px;text-decoration:none;font-weight:600">Accept invitation</a>
+  </p>
+  <p style="color:#6b7280;font-size:12px">If the button doesn't work, copy this link into your browser:<br>
+    <span style="word-break:break-all">${escapeHtml(actionLink)}</span>
+  </p>
+  <p style="color:#9ca3af;font-size:12px;margin-top:24px">Rose — research &amp; educational use only. Not legal advice.</p>
+</div>`;
+}
+
 adminRouter.post("/invite", async (req, res) => {
   const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
   if (!email || !email.includes("@")) {
     return void res.status(400).json({ detail: "A valid email address is required." });
   }
 
-  const db = createServerSupabase();
-  const selfId = res.locals.userId as string;
-
-  // Send invitation email via Supabase Auth admin API
-  const { error: inviteError } = await db.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${frontendBaseUrl()}/login`,
-  });
-
-  if (inviteError) {
-    // "User already registered" is not a failure — just inform the caller
-    if (inviteError.message.toLowerCase().includes("already")) {
-      return void res
-        .status(409)
-        .json({ detail: "A user with this email already exists." });
-    }
-    return void res.status(500).json({ detail: inviteError.message });
+  // Why not `inviteUserByEmail`? Same reason as the group invite flow (see
+  // routes/groups.ts): it routes through Supabase Auth's built-in mailer,
+  // which is rate-limited (over_email_send_rate_limit) and depends on SMTP
+  // config that often isn't set up, surfacing as a generic
+  // "Error sending invite email". We instead provision the action link
+  // WITHOUT sending Supabase's own email, then deliver our own branded email
+  // via Resend.
+  if (!isEmailConfigured()) {
+    return void res.status(400).json({
+      detail:
+        "Email is not configured on this instance. Set RESEND_API_KEY (and NOTIFICATIONS_FROM_EMAIL) to send invitations.",
+    });
   }
 
-  // Record the invitation for admin visibility
+  const db = createServerSupabase();
+  const selfId = res.locals.userId as string;
+  const redirectTo = `${frontendBaseUrl()}/login`;
+
+  let actionLink: string | null = null;
+  const inviteLink = await db.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: { redirectTo },
+  });
+  if (inviteLink.error) {
+    // Already-registered emails can't take a fresh "invite" link — fall back
+    // to a magic link so re-sends still work instead of hard-failing.
+    const magic = await db.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo },
+    });
+    if (magic.error) {
+      return void res.status(500).json({ detail: magic.error.message });
+    }
+    actionLink = magic.data.properties?.action_link ?? null;
+  } else {
+    actionLink = inviteLink.data.properties?.action_link ?? null;
+  }
+  if (!actionLink) {
+    return void res.status(500).json({ detail: "No action link was generated" });
+  }
+
+  const sent = await sendEmail({
+    to: email,
+    subject: "You're invited to Rose",
+    html: adminInviteEmailHtml(actionLink),
+  });
+  if (!sent.ok) {
+    return void res.status(500).json({ detail: sent.error });
+  }
+
+  // Record the invitation for admin visibility (best-effort; ignore dupes).
   await db.from("invitations").insert({
     email,
     invited_by: selfId,
@@ -422,53 +473,6 @@ adminRouter.post("/test-email", async (req, res) => {
     return void res.status(502).json({ detail: sent.error });
   }
   res.json({ ok: true, to });
-});
-
-// ---------------------------------------------------------------------------
-// C036 — workspace knowledge management: every playbook, KB document and
-// clause across all users, with owner + counts.
-// ---------------------------------------------------------------------------
-adminRouter.get("/knowledge", async (_req, res) => {
-  const db = createServerSupabase();
-  const [{ data: playbooks }, { data: rules }, { data: kbDocs }, { data: kbChunks }, { data: clauses }, { data: profiles }] =
-    await Promise.all([
-      db.from("playbooks").select("id, owner_id, name, agreement_type, description, updated_at"),
-      db.from("playbook_rules").select("playbook_id"),
-      db.from("kb_documents").select("id, owner_id, title, doc_type, source, created_at"),
-      db.from("kb_chunks").select("document_id"),
-      db.from("clauses").select("id, owner_id, title, agreement_type, created_at"),
-      db.from("user_profiles").select("user_id, email, display_name"),
-    ]);
-  const emailById = new Map<string, string>(
-    (profiles ?? []).map((p: { user_id: string; email: string | null }) => [
-      p.user_id,
-      p.email ?? p.user_id,
-    ]),
-  );
-  const ruleCounts = new Map<string, number>();
-  for (const r of rules ?? []) {
-    ruleCounts.set(r.playbook_id as string, (ruleCounts.get(r.playbook_id as string) ?? 0) + 1);
-  }
-  const chunkCounts = new Map<string, number>();
-  for (const c of kbChunks ?? []) {
-    chunkCounts.set(c.document_id as string, (chunkCounts.get(c.document_id as string) ?? 0) + 1);
-  }
-  res.json({
-    playbooks: (playbooks ?? []).map((p) => ({
-      ...p,
-      owner_email: emailById.get(p.owner_id as string) ?? p.owner_id,
-      rule_count: ruleCounts.get(p.id as string) ?? 0,
-    })),
-    kb_documents: (kbDocs ?? []).map((d) => ({
-      ...d,
-      owner_email: emailById.get(d.owner_id as string) ?? d.owner_id,
-      chunk_count: chunkCounts.get(d.id as string) ?? 0,
-    })),
-    clauses: (clauses ?? []).map((c) => ({
-      ...c,
-      owner_email: emailById.get(c.owner_id as string) ?? c.owner_id,
-    })),
-  });
 });
 
 // ---------------------------------------------------------------------------
