@@ -7,7 +7,7 @@ GitHub: pdombkins/mikeOSS_Australia
 
 ## Project
 **Rose** — Australian fork of Mike OSS. AI legal assistant for Australian/NZ law. **For research and educational purposes only** (not commercial; not legal advice).
-- Repo: https://github.com/pdombkins/mikeOSS_Australia
+- Repo: https://github.com/pdombkins/rose_lawyer
 - Website: rose.lawyer
 - Stack: Next.js 16 (Turbopack) frontend · Express TypeScript backend (`tsx watch`) · Supabase (auth + Postgres) · Cloudflare R2
 
