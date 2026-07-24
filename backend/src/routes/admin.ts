@@ -12,6 +12,9 @@
  *   DELETE /admin/invitations/:id    Revoke a pending invitation
  *   GET    /admin/email-status       Is outbound email (Resend) configured?
  *   POST   /admin/test-email         Send a real test email to confirm delivery
+ *   GET    /admin/document-library   Documents + folders + projects (Documents page)
+ *   PUT    /admin/documents/:id/links   Set an unfiled document's project links
+ *   PUT    /admin/folders/:id/links     Set a folder's project links
  */
 
 import { Router } from "express";
@@ -26,6 +29,7 @@ import {
 } from "../lib/appSettings";
 import { attachActiveVersionPaths } from "../lib/documentVersions";
 import { linksByDocument, setDocumentLinks } from "../lib/documentLinks";
+import { linksByFolder, setFolderLinks } from "../lib/folderLinks";
 import { isEmailConfigured, sendEmail, escapeHtml } from "../lib/email";
 
 export const adminRouter = Router();
@@ -511,36 +515,58 @@ adminRouter.put("/projects/:id/context", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Central document management — link the admin's Library documents to any
-// number of projects (live references, not copies). Powers the Admin →
-// Documents matrix (documents × projects checkboxes).
+// Central document management — link the admin's Library documents (and
+// folders) to any number of projects (live references, not copies). Powers
+// the Admin → Documents page: folders can be linked to projects, and any
+// document filed inside a linked folder inherits that folder's links
+// (override, not additive — see documentLinks.ts/folderLinks.ts). Unfiled
+// documents keep their own direct per-document links, same as before.
 //
 // GET /admin/document-library
-//   → { documents: [{ id, filename, file_type, library_kind, created_at,
-//                      linked_project_ids }], projects: [{ id, name }] }
+//   → { documents: [{ id, filename, file_type, library_kind, folder_id,
+//                      created_at, linked_project_ids }],
+//       folders: [{ id, name, parent_folder_id, linked_project_ids }],
+//       projects: [{ id, name }] }
 // PUT /admin/documents/:documentId/links { project_ids: [] }
-//   → replaces the full set of project links for one document.
+//   → replaces the full set of direct project links for one (unfiled)
+//     document. Rejected for documents currently inside a folder.
+// PUT /admin/folders/:folderId/links { project_ids: [] }
+//   → replaces the full set of project links for one folder.
 // ---------------------------------------------------------------------------
 adminRouter.get("/document-library", async (req, res) => {
   const db = createServerSupabase();
   const adminId = res.locals.userId as string;
 
-  const [{ data: rawDocs }, { data: projects }] = await Promise.all([
-    db
-      .from("documents")
-      .select("id, user_id, library_kind, created_at, current_version_id")
-      .eq("user_id", adminId)
-      .is("project_id", null)
-      .order("created_at", { ascending: false }),
-    db
-      .from("projects")
-      .select("id, name")
-      .order("name", { ascending: true }),
-  ]);
+  const [{ data: rawDocs }, { data: projects }, { data: rawFolders }] =
+    await Promise.all([
+      db
+        .from("documents")
+        .select(
+          "id, user_id, library_kind, library_folder_id, created_at, current_version_id",
+        )
+        .eq("user_id", adminId)
+        .is("project_id", null)
+        // Scope to Library → Files (folders are file-kind only; keeping
+        // templates out avoids a template doc silently vanishing from this
+        // view if it sits in a template folder, which isn't in `folders`).
+        .or("library_kind.eq.file,library_kind.is.null")
+        .order("created_at", { ascending: false }),
+      db
+        .from("projects")
+        .select("id, name")
+        .order("name", { ascending: true }),
+      db
+        .from("library_folders")
+        .select("id, name, parent_folder_id, created_at")
+        .eq("user_id", adminId)
+        .eq("library_kind", "file")
+        .order("name", { ascending: true }),
+    ]);
 
   const docs = (rawDocs ?? []) as unknown as {
     id: string;
     library_kind?: string | null;
+    library_folder_id?: string | null;
     created_at?: string | null;
     filename?: string | null;
     file_type?: string | null;
@@ -551,14 +577,32 @@ adminRouter.get("/document-library", async (req, res) => {
     docs.map((d) => d.id),
   );
 
+  const folders = (rawFolders ?? []) as {
+    id: string;
+    name: string;
+    parent_folder_id: string | null;
+    created_at: string | null;
+  }[];
+  const folderLinkMap = await linksByFolder(
+    db,
+    folders.map((f) => f.id),
+  );
+
   res.json({
     documents: docs.map((d) => ({
       id: d.id,
       filename: d.filename ?? "Untitled document",
       file_type: d.file_type ?? null,
       library_kind: d.library_kind ?? "file",
+      folder_id: d.library_folder_id ?? null,
       created_at: d.created_at ?? null,
       linked_project_ids: linkMap.get(d.id) ?? [],
+    })),
+    folders: folders.map((f) => ({
+      id: f.id,
+      name: f.name,
+      parent_folder_id: f.parent_folder_id,
+      linked_project_ids: folderLinkMap.get(f.id) ?? [],
     })),
     projects: (projects ?? []).map((p: { id: string; name: string }) => ({
       id: p.id,
@@ -575,11 +619,17 @@ adminRouter.put("/documents/:documentId/links", async (req, res) => {
   // Only allow linking the admin's own Library documents.
   const { data: doc } = await db
     .from("documents")
-    .select("id, user_id")
+    .select("id, user_id, library_folder_id")
     .eq("id", documentId)
     .maybeSingle();
   if (!doc || (doc as { user_id: string }).user_id !== adminId) {
     return void res.status(404).json({ detail: "Document not found" });
+  }
+  if ((doc as { library_folder_id: string | null }).library_folder_id) {
+    return void res.status(400).json({
+      detail:
+        "This document is inside a folder — set project links on the folder instead.",
+    });
   }
 
   const raw: unknown[] = Array.isArray(req.body?.project_ids)
@@ -605,6 +655,50 @@ adminRouter.put("/documents/:documentId/links", async (req, res) => {
   }
 
   await setDocumentLinks(db, documentId, validIds, adminId);
+  res.json({ ok: true, project_ids: validIds });
+});
+
+adminRouter.put("/folders/:folderId/links", async (req, res) => {
+  const db = createServerSupabase();
+  const adminId = res.locals.userId as string;
+  const { folderId } = req.params;
+
+  // Only allow linking the admin's own Library folders.
+  const { data: folder } = await db
+    .from("library_folders")
+    .select("id, user_id, library_kind")
+    .eq("id", folderId)
+    .maybeSingle();
+  if (
+    !folder ||
+    (folder as { user_id: string }).user_id !== adminId ||
+    (folder as { library_kind: string }).library_kind !== "file"
+  ) {
+    return void res.status(404).json({ detail: "Folder not found" });
+  }
+
+  const raw: unknown[] = Array.isArray(req.body?.project_ids)
+    ? (req.body.project_ids as unknown[])
+    : [];
+  const projectIds: string[] = [
+    ...new Set(
+      raw.filter((v): v is string => typeof v === "string" && v.length > 0),
+    ),
+  ];
+
+  let validIds: string[] = projectIds;
+  if (projectIds.length > 0) {
+    const { data: existing } = await db
+      .from("projects")
+      .select("id")
+      .in("id", projectIds);
+    const existingSet = new Set<string>(
+      (existing ?? []).map((p: { id: string }) => p.id),
+    );
+    validIds = projectIds.filter((id: string) => existingSet.has(id));
+  }
+
+  await setFolderLinks(db, folderId, validIds, adminId);
   res.json({ ok: true, project_ids: validIds });
 });
 

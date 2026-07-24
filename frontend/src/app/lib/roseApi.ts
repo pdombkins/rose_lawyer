@@ -361,7 +361,15 @@ export interface AdminDocLibraryEntry {
     filename: string;
     file_type: string | null;
     library_kind: string;
+    folder_id: string | null;
     created_at: string | null;
+    linked_project_ids: string[];
+}
+
+export interface AdminDocLibraryFolder {
+    id: string;
+    name: string;
+    parent_folder_id: string | null;
     linked_project_ids: string[];
 }
 
@@ -372,6 +380,7 @@ export interface AdminDocLibraryProject {
 
 export interface AdminDocumentLibrary {
     documents: AdminDocLibraryEntry[];
+    folders: AdminDocLibraryFolder[];
     projects: AdminDocLibraryProject[];
 }
 
@@ -384,6 +393,17 @@ export async function adminSetDocumentLinks(
     projectIds: string[],
 ): Promise<{ ok: boolean; project_ids: string[] }> {
     return apiRequest(`/admin/documents/${documentId}/links`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_ids: projectIds }),
+    });
+}
+
+export async function adminSetFolderLinks(
+    folderId: string,
+    projectIds: string[],
+): Promise<{ ok: boolean; project_ids: string[] }> {
+    return apiRequest(`/admin/folders/${folderId}/links`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_ids: projectIds }),
