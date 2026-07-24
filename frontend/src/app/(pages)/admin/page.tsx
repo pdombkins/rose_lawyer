@@ -19,6 +19,7 @@ import {
     Check,
 } from "lucide-react";
 import { useUserProfile } from "@/app/contexts/UserProfileContext";
+import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
 import {
     SETTINGS_MODELS,
     type ModelOption,
@@ -91,6 +92,8 @@ export default function AdminPage() {
     const [costLineItems, setCostLineItems] = useState<AdminCostLineItem[]>([]);
     const [showCostDetails, setShowCostDetails] = useState(false);
     const [loadingCosts, setLoadingCosts] = useState(false);
+    const [loadingMoreCosts, setLoadingMoreCosts] = useState(false);
+    const [hasMoreCosts, setHasMoreCosts] = useState(false);
 
     const [emailStatus, setEmailStatus] = useState<AdminEmailStatus | null>(null);
     const [testEmailTo, setTestEmailTo] = useState("");
@@ -162,12 +165,26 @@ export default function AdminPage() {
             const data = await adminGetCosts(200, 0);
             setCostTotals(data.totals);
             setCostLineItems(data.lineItems);
+            setHasMoreCosts(data.lineItems.length >= 200);
         } catch {
             // swallow
         } finally {
             setLoadingCosts(false);
         }
     }, []);
+
+    const loadMoreCosts = useCallback(async () => {
+        setLoadingMoreCosts(true);
+        try {
+            const data = await adminGetCosts(200, costLineItems.length);
+            setCostLineItems((prev) => [...prev, ...data.lineItems]);
+            setHasMoreCosts(data.lineItems.length >= 200);
+        } catch {
+            setHasMoreCosts(false);
+        } finally {
+            setLoadingMoreCosts(false);
+        }
+    }, [costLineItems.length]);
 
     useEffect(() => {
         if (profile?.isAdmin) {
@@ -921,11 +938,11 @@ export default function AdminPage() {
                                             ))}
                                         </tbody>
                                     </table>
-                                    {costLineItems.length >= 200 && (
-                                        <p className="px-3 py-2 text-center text-xs text-gray-400">
-                                            Showing most recent 200 queries.
-                                        </p>
-                                    )}
+                                    <LoadMoreSentinel
+                                        hasMore={hasMoreCosts}
+                                        loading={loadingMoreCosts}
+                                        onLoadMore={loadMoreCosts}
+                                    />
                                 </div>
                             )}
 

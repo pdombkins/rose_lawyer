@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { apiVerifyText, getVerifyReport, listVerifyReports, setAssertionVerdict } from "@/app/lib/roseApi";
 import type { VerifyAssertion, VerifyReportSummary } from "@/app/lib/roseApi";
+import { usePaginatedList } from "@/app/hooks/usePaginatedList";
+import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
 
 const VERDICT_LABELS: Record<string, string> = {
     supported: "Supported",
@@ -44,7 +46,6 @@ function VerifyPageInner() {
     const [text, setText] = useState("");
     const [running, setRunning] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [reports, setReports] = useState<VerifyReportSummary[]>([]);
     const [report, setReport] = useState<{
         status: string;
         assertions: VerifyAssertion[];
@@ -64,11 +65,20 @@ function VerifyPageInner() {
         }
     }, [reportId]);
 
-    useEffect(() => {
-        void listVerifyReports()
-            .then(({ reports }) => setReports(reports))
-            .catch(() => {});
-    }, [reportId]);
+    const fetchReports = useCallback(
+        (limit: number) => listVerifyReports(limit).then(({ reports }) => reports),
+        [],
+    );
+    const {
+        items: reportItems,
+        hasMore: hasMoreReports,
+        loadingMore: loadingMoreReports,
+        loadMore: loadMoreReports,
+    } = usePaginatedList<VerifyReportSummary>(fetchReports, [reportId], {
+        initialLimit: 50,
+        increment: 50,
+    });
+    const reports = reportItems ?? [];
 
     useEffect(() => {
         setReport(null);
@@ -163,6 +173,11 @@ function VerifyPageInner() {
                                     </li>
                                 ))}
                             </ul>
+                            <LoadMoreSentinel
+                                hasMore={hasMoreReports}
+                                loading={loadingMoreReports}
+                                onLoadMore={loadMoreReports}
+                            />
                         </div>
                     )}
                 </>

@@ -28,6 +28,8 @@ import {
     type RegSource,
     type RegWatch,
 } from "@/app/lib/roseApi";
+import { usePaginatedList } from "@/app/hooks/usePaginatedList";
+import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
 
 function timeAgo(iso: string | null): string {
     if (!iso) return "";
@@ -42,8 +44,6 @@ export default function RegwatchPage() {
     const [watches, setWatches] = useState<RegWatch[]>([]);
     const [sources, setSources] = useState<RegSource[]>([]);
     const [selected, setSelected] = useState<string | null>(null);
-    const [events, setEvents] = useState<RegEvent[]>([]);
-    const [loadingEvents, setLoadingEvents] = useState(false);
     const [scanning, setScanning] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [draft, setDraft] = useState({
@@ -70,24 +70,34 @@ export default function RegwatchPage() {
             .catch(() => {});
     }, [user, refresh]);
 
-    useEffect(() => {
-        if (!selected) return setEvents([]);
-        setLoadingEvents(true);
-        void getRegWatchEvents(selected)
-            .then(({ events }) => setEvents(events))
-            .catch(() => setEvents([]))
-            .finally(() => setLoadingEvents(false));
-    }, [selected]);
+    const fetchEvents = useCallback(
+        (limit: number) => {
+            if (!selected) return Promise.resolve([]);
+            return getRegWatchEvents(selected, limit).then(
+                ({ events }) => events,
+            );
+        },
+        [selected],
+    );
+    const {
+        items: eventItems,
+        hasMore: hasMoreEvents,
+        loadingMore: loadingMoreEvents,
+        loadMore: loadMoreEvents,
+        refresh: refreshEvents,
+    } = usePaginatedList<RegEvent>(fetchEvents, [selected], {
+        initialLimit: 200,
+        increment: 200,
+    });
+    const events = eventItems ?? [];
+    const loadingEvents = selected !== null && eventItems === null;
 
     const scanNow = async () => {
         setScanning(true);
         try {
             await triggerRegScan();
             await refresh();
-            if (selected) {
-                const { events } = await getRegWatchEvents(selected);
-                setEvents(events);
-            }
+            if (selected) refreshEvents();
         } finally {
             setScanning(false);
         }
@@ -206,9 +216,7 @@ export default function RegwatchPage() {
                                 onClick={() =>
                                     void markRegEventsSeen(selected).then(() => {
                                         void refresh();
-                                        void getRegWatchEvents(selected).then(
-                                            ({ events }) => setEvents(events),
-                                        );
+                                        refreshEvents();
                                     })
                                 }
                                 className="text-xs text-gray-500 hover:text-gray-800"
@@ -259,6 +267,11 @@ export default function RegwatchPage() {
                                 ))}
                             </ul>
                         )}
+                        <LoadMoreSentinel
+                            hasMore={hasMoreEvents}
+                            loading={loadingMoreEvents}
+                            onLoadMore={loadMoreEvents}
+                        />
                     </div>
                 )}
             </div>

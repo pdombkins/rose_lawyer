@@ -7,15 +7,23 @@ import { createServerSupabase } from "../lib/supabase";
 
 export const notificationsRouter = Router();
 
-// GET /notifications?unread=1 — latest notifications for the caller.
+// GET /notifications?unread=1&limit=<n> — latest notifications for the
+// caller. `limit` defaults to 50 and lets the bell dropdown's "Load more"
+// grow past the default page without a dedicated offset (small collection
+// per user; same "growing limit, refetch from top" pattern used by the
+// chat sidebar and other lists across the app).
 notificationsRouter.get("/", requireAuth, async (req, res) => {
   const db = createServerSupabase();
+  const limit = Math.min(
+    Math.max(parseInt(String(req.query.limit ?? "50"), 10) || 50, 1),
+    2000,
+  );
   let query = db
     .from("notifications")
     .select("id, kind, title, body, link, read_at, created_at")
     .eq("user_id", res.locals.userId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
   if (req.query.unread === "1") query = query.is("read_at", null);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });

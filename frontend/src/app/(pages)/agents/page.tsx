@@ -34,6 +34,8 @@ import {
     type AgentStepDetail,
 } from "@/app/lib/roseApi";
 import type { Document } from "@/app/components/shared/types";
+import { usePaginatedList } from "@/app/hooks/usePaginatedList";
+import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
 
 const ROLES = ["intake", "research", "drafting", "review", "verify"] as const;
 
@@ -211,7 +213,6 @@ function AgentsPageInner() {
     const searchParams = useSearchParams();
     const selectedId = searchParams.get("run");
 
-    const [runs, setRuns] = useState<AgentRunSummary[]>([]);
     const [request, setRequest] = useState("");
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -298,14 +299,24 @@ function AgentsPageInner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const refreshList = useCallback(async () => {
-        try {
-            const { runs } = await listAgentRuns();
-            setRuns(runs);
-        } catch {
-            /* transient */
-        }
-    }, []);
+    const fetchRuns = useCallback(
+        (limit: number) => {
+            if (!user) return Promise.resolve([]);
+            return listAgentRuns(limit).then(({ runs }) => runs);
+        },
+        [user],
+    );
+    const {
+        items: runItems,
+        hasMore: hasMoreRuns,
+        loadingMore: loadingMoreRuns,
+        loadMore: loadMoreRuns,
+        refresh: refreshList,
+    } = usePaginatedList<AgentRunSummary>(fetchRuns, [user], {
+        initialLimit: 50,
+        increment: 50,
+    });
+    const runs = runItems ?? [];
 
     const refreshDetail = useCallback(async () => {
         if (!selectedId) return;
@@ -321,11 +332,6 @@ function AgentsPageInner() {
             /* transient */
         }
     }, [selectedId]);
-
-    useEffect(() => {
-        if (!user) return;
-        void refreshList();
-    }, [user, refreshList]);
 
     useEffect(() => {
         setDetail(null);
@@ -589,6 +595,11 @@ function AgentsPageInner() {
                         <li className="text-sm text-gray-400">No runs yet.</li>
                     )}
                 </ul>
+                <LoadMoreSentinel
+                    hasMore={hasMoreRuns}
+                    loading={loadingMoreRuns}
+                    onLoadMore={loadMoreRuns}
+                />
             </div>
 
             {/* Right: run detail */}

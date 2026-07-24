@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bell, CheckCheck } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
+import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
 
 function timeAgo(iso: string): string {
     const s = Math.max(1, Math.floor((Date.now() - Date.parse(iso)) / 1000));
@@ -23,9 +24,15 @@ const KIND_LABELS: Record<string, string> = {
 
 export default function NotificationsPage() {
     const { user } = useAuth();
-    const { notifications, unreadCount, markRead, refresh } = useNotifications(
-        !!user,
-    );
+    const {
+        notifications,
+        unreadCount,
+        hasMore,
+        loadingMore,
+        loadMore,
+        markRead,
+        refresh,
+    } = useNotifications(!!user);
 
     useEffect(() => {
         void refresh();
@@ -108,6 +115,11 @@ export default function NotificationsPage() {
                     })}
                 </ul>
             )}
+            <LoadMoreSentinel
+                hasMore={hasMore}
+                loading={loadingMore}
+                onLoadMore={loadMore}
+            />
         </div>
     );
 }

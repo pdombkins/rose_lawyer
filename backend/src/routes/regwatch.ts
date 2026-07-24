@@ -112,6 +112,9 @@ regwatchRouter.delete("/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /regwatch/:id/events?limit=<n> — `limit` defaults to 200 and lets the
+// page's "load more" grow past the default (growing-limit-and-refetch
+// pagination, same pattern used across the app).
 regwatchRouter.get("/:id/events", requireAuth, async (req, res) => {
   const db = createServerSupabase();
   const { data: watch } = await db
@@ -121,12 +124,16 @@ regwatchRouter.get("/:id/events", requireAuth, async (req, res) => {
     .eq("owner_id", res.locals.userId)
     .maybeSingle();
   if (!watch) return void res.status(404).json({ detail: "Watch not found" });
+  const limit = Math.min(
+    Math.max(parseInt(String(req.query.limit ?? "200"), 10) || 200, 1),
+    5000,
+  );
   const { data } = await db
     .from("regulatory_events")
     .select("*")
     .eq("watch_id", req.params.id)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(limit);
   res.json({ events: data ?? [] });
 });
 

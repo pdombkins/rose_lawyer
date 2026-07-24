@@ -45,14 +45,20 @@ verifyRouter.post("/", requireAuth, async (req, res) => {
   }
 });
 
-verifyRouter.get("/", requireAuth, async (_req, res) => {
+// GET /verify?limit=<n> — `limit` defaults to 50 and lets the reports list's
+// "load more" grow past the default (growing-limit-and-refetch pagination).
+verifyRouter.get("/", requireAuth, async (req, res) => {
   const db = createServerSupabase();
+  const limit = Math.min(
+    Math.max(parseInt(String(req.query.limit ?? "50"), 10) || 50, 1),
+    5000,
+  );
   const { data } = await db
     .from("verification_reports")
     .select("id, source_kind, source_ref, status, created_at, source_excerpt")
     .eq("owner_id", res.locals.userId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
   res.json({ reports: data ?? [] });
 });
 

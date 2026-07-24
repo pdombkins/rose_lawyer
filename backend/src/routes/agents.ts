@@ -179,9 +179,14 @@ agentsRouter.post("/", requireAuth, async (req, res) => {
   }
 });
 
-// GET /agents
-agentsRouter.get("/", requireAuth, async (_req, res) => {
+// GET /agents?limit=<n> — `limit` defaults to 50 and lets the runs list's
+// "load more" grow past the default (growing-limit-and-refetch pagination).
+agentsRouter.get("/", requireAuth, async (req, res) => {
   const db = createServerSupabase();
+  const limit = Math.min(
+    Math.max(parseInt(String(req.query.limit ?? "50"), 10) || 50, 1),
+    5000,
+  );
   const { data, error } = await db
     .from("agent_runs")
     .select(
@@ -189,7 +194,7 @@ agentsRouter.get("/", requireAuth, async (_req, res) => {
     )
     .eq("owner_id", res.locals.userId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
   if (error) return void res.status(500).json({ detail: error.message });
   res.json({ runs: data ?? [] });
 });

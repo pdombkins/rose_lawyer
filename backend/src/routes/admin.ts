@@ -390,7 +390,7 @@ adminRouter.get("/audit", async (req, res) => {
   const db = createServerSupabase();
   const limit = Math.min(
     Math.max(parseInt(String(req.query.limit ?? "200"), 10) || 200, 1),
-    1000,
+    10_000,
   );
   let query = db
     .from("audit_events")

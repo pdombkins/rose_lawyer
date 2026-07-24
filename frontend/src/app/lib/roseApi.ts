@@ -1765,11 +1765,18 @@ export type AppNotification = {
     created_at: string;
 };
 
-export async function getNotifications(unreadOnly = false): Promise<{
+export async function getNotifications(
+    unreadOnly = false,
+    limit?: number,
+): Promise<{
     notifications: AppNotification[];
     unreadCount: number;
 }> {
-    return apiRequest(`/notifications${unreadOnly ? "?unread=1" : ""}`);
+    const qs = new URLSearchParams();
+    if (unreadOnly) qs.set("unread", "1");
+    if (limit) qs.set("limit", String(limit));
+    const q = qs.toString();
+    return apiRequest(`/notifications${q ? `?${q}` : ""}`);
 }
 
 export async function markNotificationsRead(ids?: string[]): Promise<void> {
@@ -1840,8 +1847,10 @@ export async function createAgentRun(input: {
     });
 }
 
-export async function listAgentRuns(): Promise<{ runs: AgentRunSummary[] }> {
-    return apiRequest(`/agents`);
+export async function listAgentRuns(
+    limit?: number,
+): Promise<{ runs: AgentRunSummary[] }> {
+    return apiRequest(`/agents${limit ? `?limit=${limit}` : ""}`);
 }
 
 export async function getAgentRun(id: string): Promise<{
@@ -2128,10 +2137,10 @@ export async function apiVerifyText(text: string): Promise<{
     });
 }
 
-export async function listVerifyReports(): Promise<{
+export async function listVerifyReports(limit?: number): Promise<{
     reports: VerifyReportSummary[];
 }> {
-    return apiRequest(`/verify`);
+    return apiRequest(`/verify${limit ? `?limit=${limit}` : ""}`);
 }
 
 export async function getVerifyReport(id: string): Promise<{
@@ -2215,8 +2224,11 @@ export async function deleteRegWatch(id: string): Promise<void> {
 
 export async function getRegWatchEvents(
     id: string,
+    limit?: number,
 ): Promise<{ events: RegEvent[] }> {
-    return apiRequest(`/regwatch/${id}/events`);
+    return apiRequest(
+        `/regwatch/${id}/events${limit ? `?limit=${limit}` : ""}`,
+    );
 }
 
 export async function markRegEventsSeen(id: string): Promise<void> {
@@ -2264,11 +2276,13 @@ export async function adminGetAudit(params?: {
     user?: string;
     tool?: string;
     type?: string;
+    limit?: number;
 }): Promise<{ events: AdminAuditEvent[] }> {
     const qs = new URLSearchParams();
     if (params?.user) qs.set("user", params.user);
     if (params?.tool) qs.set("tool", params.tool);
     if (params?.type) qs.set("type", params.type);
+    if (params?.limit) qs.set("limit", String(params.limit));
     const q = qs.toString();
     return apiRequest(`/admin/audit${q ? `?${q}` : ""}`);
 }

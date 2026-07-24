@@ -5,10 +5,12 @@
  * share/export and membership change. Filter + CSV export.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { Download, ScrollText, Loader2 } from "lucide-react";
-import { adminGetAudit, type AdminAuditEvent } from "@/app/lib/roseApi";
+import { adminGetAudit } from "@/app/lib/roseApi";
+import { usePaginatedList } from "@/app/hooks/usePaginatedList";
+import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
 
 const EVENT_TYPES = [
     "",
@@ -23,19 +25,24 @@ const EVENT_TYPES = [
 ];
 
 export default function AdminAuditPage() {
-    const [events, setEvents] = useState<AdminAuditEvent[] | null>(null);
     const [typeFilter, setTypeFilter] = useState("");
     const [toolFilter, setToolFilter] = useState("");
 
-    useEffect(() => {
-        setEvents(null);
-        adminGetAudit({
-            type: typeFilter || undefined,
-            tool: toolFilter || undefined,
-        })
-            .then(({ events }) => setEvents(events))
-            .catch(() => setEvents([]));
-    }, [typeFilter, toolFilter]);
+    const fetchPage = useCallback(
+        (limit: number) =>
+            adminGetAudit({
+                type: typeFilter || undefined,
+                tool: toolFilter || undefined,
+                limit,
+            }).then(({ events }) => events),
+        [typeFilter, toolFilter],
+    );
+
+    const { items: events, hasMore, loadingMore, loadMore } = usePaginatedList(
+        fetchPage,
+        [typeFilter, toolFilter],
+        { initialLimit: 200, increment: 200 },
+    );
 
     return (
         <div className="mx-auto w-full max-w-6xl px-4 py-8">
@@ -144,6 +151,11 @@ export default function AdminAuditPage() {
                             )}
                         </tbody>
                     </table>
+                    <LoadMoreSentinel
+                        hasMore={hasMore}
+                        loading={loadingMore}
+                        onLoadMore={loadMore}
+                    />
                 </div>
             )}
         </div>
