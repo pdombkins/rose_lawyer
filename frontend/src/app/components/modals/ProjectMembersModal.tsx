@@ -20,7 +20,7 @@ import {
     type ProjectMember,
     type ProjectMemberRole,
     type UserGroup,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 
 const ASSIGNABLE_ROLES: Exclude<ProjectMemberRole, "owner">[] = [
     "editor",

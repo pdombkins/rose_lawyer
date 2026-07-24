@@ -4,7 +4,7 @@
  * C024 — Deep-verify page. Paste text (or arrive from a chat/agent link),
  * see per-assertion verdicts. When Jade content access is off, each open
  * assertion shows outbound Jade/AustLII search links (the USER opens them —
- * Mike never fetches AustLII) and a verdict control; the report completes
+ * Rose never fetches AustLII) and a verdict control; the report completes
  * only when every assertion is adjudicated.
  */
 
@@ -17,8 +17,8 @@ import {
     ShieldCheck,
     User,
 } from "lucide-react";
-import { apiVerifyText, getVerifyReport, listVerifyReports, setAssertionVerdict } from "@/app/lib/mikeApi";
-import type { VerifyAssertion, VerifyReportSummary } from "@/app/lib/mikeApi";
+import { apiVerifyText, getVerifyReport, listVerifyReports, setAssertionVerdict } from "@/app/lib/roseApi";
+import type { VerifyAssertion, VerifyReportSummary } from "@/app/lib/roseApi";
 
 const VERDICT_LABELS: Record<string, string> = {
     supported: "Supported",

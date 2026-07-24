@@ -10,6 +10,8 @@
  *   POST   /admin/invite             Invite a new user by email
  *   GET    /admin/invitations        List pending (unaccepted) invitations
  *   DELETE /admin/invitations/:id    Revoke a pending invitation
+ *   GET    /admin/email-status       Is outbound email (Resend) configured?
+ *   POST   /admin/test-email         Send a real test email to confirm delivery
  */
 
 import { Router } from "express";
@@ -24,6 +26,7 @@ import {
 } from "../lib/appSettings";
 import { attachActiveVersionPaths } from "../lib/documentVersions";
 import { linksByDocument, setDocumentLinks } from "../lib/documentLinks";
+import { isEmailConfigured, sendEmail } from "../lib/email";
 
 export const adminRouter = Router();
 
@@ -366,13 +369,60 @@ adminRouter.get("/audit", async (req, res) => {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="mike-audit.csv"',
+      'attachment; filename="rose-audit.csv"',
     );
     return void res.send([header, ...lines].join("\n"));
   }
   res.json({ events: enriched });
 });
 
+// ── Email transport diagnostics ──────────────────────────────────────────────
+// GET  /admin/email-status  — is Resend configured, and what's the from-address?
+// POST /admin/test-email    — send a real test email (defaults to the caller's
+//                              own address) to confirm the transport actually
+//                              delivers, not just that a key is present.
+
+adminRouter.get("/email-status", async (_req, res) => {
+  res.json({
+    configured: isEmailConfigured(),
+    fromAddress: process.env.NOTIFICATIONS_FROM_EMAIL || "Rose <onboarding@resend.dev>",
+  });
+});
+
+adminRouter.post("/test-email", async (req, res) => {
+  const userId = res.locals.userId as string;
+  const db = createServerSupabase();
+
+  if (!isEmailConfigured()) {
+    return void res.status(400).json({
+      detail: "Email is not configured on this instance. Set RESEND_API_KEY.",
+    });
+  }
+
+  let to = typeof req.body?.to === "string" ? req.body.to.trim() : "";
+  if (!to) {
+    const { data } = await db.auth.admin.getUserById(userId);
+    to = data?.user?.email ?? "";
+  }
+  if (!to) {
+    return void res.status(400).json({ detail: "No recipient email address found" });
+  }
+
+  const sent = await sendEmail({
+    to,
+    subject: "Rose — test email",
+    html: `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;color:#111827;line-height:1.5">
+      <h2 style="margin:0 0 12px">Rose email transport check</h2>
+      <p>If you're reading this, outbound email via Resend is working — sent at ${new Date().toISOString()}.</p>
+    </div>`,
+    text: `Rose email transport check — outbound email via Resend is working. Sent at ${new Date().toISOString()}.`,
+  });
+
+  if (!sent.ok) {
+    return void res.status(502).json({ detail: sent.error });
+  }
+  res.json({ ok: true, to });
+});
 
 // ---------------------------------------------------------------------------
 // C036 — workspace knowledge management: every playbook, KB document and

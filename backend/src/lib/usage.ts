@@ -1,7 +1,7 @@
 /**
  * C077 — consumption metering (Legora consumption-pricing analogue).
  *
- * Mike records every LLM/embedding call in query_costs (AUD). This module
+ * Rose records every LLM/embedding call in query_costs (AUD). This module
  * aggregates that spend per user and per project, and implements SOFT
  * monthly budgets: a notification at 80%, a banner at 100% — never a block.
  * Teaching goal: students see what their research costs.

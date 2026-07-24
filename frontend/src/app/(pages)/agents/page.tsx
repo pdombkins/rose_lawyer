@@ -26,76 +26,89 @@ import {
     createAgentRun,
     getAgentRun,
     exportOutput,
+    getJadeAccessStatus,
     getLibrary,
     listAgentRuns,
     type AgentPlan,
     type AgentRunSummary,
     type AgentStepDetail,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import type { Document } from "@/app/components/shared/types";
 
 const ROLES = ["intake", "research", "drafting", "review", "verify"] as const;
 
-// Per-role reference (mirrors backend ROLE_TOOLSETS). Lists the specific
-// sources each role can draw on, so it's clear what an agent may consult
-// before a run is approved. `playbooks` flags roles that can use playbooks
-// (drives the per-step "sources used" note).
-const ROLE_CAPABILITIES: Record<
-    (typeof ROLES)[number],
-    { blurb: string; playbooks: boolean; sources: string[] }
-> = {
-    intake: {
-        blurb: "Characterises the matter, parties, jurisdiction and inputs (read-only).",
-        playbooks: false,
-        sources: ["Project & attached documents", "Matter list items"],
-    },
-    research: {
-        blurb: "Researches the question across internal and Australian sources.",
-        playbooks: true,
-        sources: [
-            "Knowledge base",
-            "Saved clauses",
-            "Playbooks",
-            "Jade.io — case law",
-            "Jade.io — legislation",
-            "Jade.io — citation validation",
-            "Project documents",
-            "Tabular review data",
-        ],
-    },
-    drafting: {
-        blurb: "Produces or edits documents, grounded in your precedents.",
-        playbooks: true,
-        sources: [
-            "Knowledge base",
-            "Saved clauses",
-            "Playbooks",
-            "Project documents",
-            "AGLC4 citation formatting",
-        ],
-    },
-    review: {
-        blurb: "Reviews a document against your playbooks and AU law.",
-        playbooks: true,
-        sources: [
-            "Playbooks (reviews the document against them)",
-            "Knowledge base",
-            "Saved clauses",
-            "Project documents",
-            "Jade.io — citation validation",
-        ],
-    },
-    verify: {
-        blurb: "Validates citations and checks they support the assertions made.",
-        playbooks: false,
-        sources: [
-            "Project documents",
-            "Jade.io — citation validation",
-            "Jade.io — document fetch",
-            "Assertion checks (Jade.io / AustLII)",
-        ],
-    },
-};
+// Per-role reference (mirrors backend agents/types.ts roleToolset()). Lists
+// the specific sources each role can draw on, so it's clear what an agent
+// may consult before a run is approved. `playbooks` flags roles that can use
+// playbooks (drives the per-step "sources used" note).
+//
+// Jade.io's search/fetch tools only do anything when an admin has approved
+// Jade access (BarNet written permission) — toolDispatcher.ts on the backend
+// refuses to call Jade.io otherwise. So this list must reflect the *live*
+// jadeAccessApproved setting, not assume Jade is always on: when it's off,
+// every role instead falls back to AustLII manual verification (the user
+// opens a search link and records the outcome themselves; the AI never
+// fetches AustLII content).
+function getRoleCapabilities(
+    jadeApproved: boolean,
+): Record<(typeof ROLES)[number], { blurb: string; playbooks: boolean; sources: string[] }> {
+    const caseLawSources = jadeApproved
+        ? ["Jade.io — case law", "Jade.io — legislation", "Jade.io — citation validation"]
+        : ["AustLII — manual search link (user verifies, Jade access not approved)"];
+    const citationValidationSource = jadeApproved
+        ? "Jade.io — citation validation"
+        : "AustLII — manual search link (user verifies)";
+    const verifySources = jadeApproved
+        ? ["Jade.io — citation validation", "Jade.io — document fetch", "Assertion checks (Jade.io)"]
+        : ["AustLII — manual search link (user verifies)", "Assertion checks (AustLII manual verification only)"];
+
+    return {
+        intake: {
+            blurb: "Characterises the matter, parties, jurisdiction and inputs (read-only).",
+            playbooks: false,
+            sources: ["Project & attached documents", "Matter list items"],
+        },
+        research: {
+            blurb: "Researches the question across internal and Australian sources.",
+            playbooks: true,
+            sources: [
+                "Knowledge base",
+                "Saved clauses",
+                "Playbooks",
+                ...caseLawSources,
+                "Project documents",
+                "Tabular review data",
+            ],
+        },
+        drafting: {
+            blurb: "Produces or edits documents, grounded in your precedents.",
+            playbooks: true,
+            sources: [
+                "Knowledge base",
+                "Saved clauses",
+                "Playbooks",
+                "Project documents",
+                "AGLC4 citation formatting",
+            ],
+        },
+        review: {
+            blurb: "Reviews a document against your playbooks and AU law.",
+            playbooks: true,
+            sources: [
+                "Playbooks (reviews the document against them)",
+                "Knowledge base",
+                "Saved clauses",
+                "Project documents",
+                citationValidationSource,
+            ],
+        },
+        verify: {
+            blurb: "Validates citations and checks they support the assertions made.",
+            playbooks: false,
+            sources: ["Project documents", ...verifySources],
+        },
+    };
+}
 
 const STATUS_STYLES: Record<string, string> = {
     planning: "bg-amber-100 text-amber-800",
@@ -128,19 +141,29 @@ function StepStatusIcon({ status }: { status: string }) {
     return <CircleDashed className="h-4 w-4 text-gray-300" />;
 }
 
+// Whether a role can draw on playbooks — structural, not affected by the
+// Jade-access toggle (unlike the case-law sources in getRoleCapabilities).
+const ROLE_USES_PLAYBOOKS: Record<(typeof ROLES)[number], boolean> = {
+    intake: false,
+    research: true,
+    drafting: true,
+    review: true,
+    verify: false,
+};
+
 // Per-run transparency: what a step actually consulted.
 function StepSources({
     sources,
     role,
 }: {
-    sources?: import("@/app/lib/mikeApi").AgentStepSources;
+    sources?: import("@/app/lib/roseApi").AgentStepSources;
     role: string;
 }) {
     const playbooks = sources?.playbooks ?? [];
     const documents = sources?.documents ?? [];
     const searches = sources?.knowledge_searches ?? [];
     const canUsePlaybooks =
-        ROLE_CAPABILITIES[role as (typeof ROLES)[number]]?.playbooks;
+        ROLE_USES_PLAYBOOKS[role as (typeof ROLES)[number]];
     if (
         playbooks.length === 0 &&
         documents.length === 0 &&
@@ -198,6 +221,20 @@ function AgentsPageInner() {
     const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
     const [draftFromPrecedent, setDraftFromPrecedent] = useState(false);
     const [showRoleRef, setShowRoleRef] = useState(false);
+    // Whether Jade.io tools are actually live right now (admin has approved
+    // Jade access). Drives which sources the role reference shows — Jade.io
+    // when approved, AustLII manual verification when not.
+    const [jadeApproved, setJadeApproved] = useState<boolean | null>(null);
+    const roleCapabilities = useMemo(
+        () => getRoleCapabilities(jadeApproved ?? false),
+        [jadeApproved],
+    );
+
+    useEffect(() => {
+        void getJadeAccessStatus()
+            .then((s) => setJadeApproved(s.jadeAccessApproved))
+            .catch(() => setJadeApproved(false));
+    }, []);
 
     useEffect(() => {
         if (!showDocs || docs.length > 0) return;
@@ -459,8 +496,21 @@ function AgentsPageInner() {
                     </button>
                     {showRoleRef && (
                         <ul className="space-y-2 border-t border-gray-100 px-3 py-2.5">
+                            <li
+                                className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+                                    jadeApproved
+                                        ? "bg-amber-50 text-amber-700"
+                                        : "bg-sky-50 text-sky-700"
+                                }`}
+                            >
+                                {jadeApproved === null
+                                    ? "Checking Jade.io access…"
+                                    : jadeApproved
+                                      ? "Jade.io access: approved — research/review/verify steps may search and validate against Jade.io."
+                                      : "Jade.io access: not approved — research/review/verify steps will not call Jade.io at all; they fall back to an AustLII search link that you open and verify yourself."}
+                            </li>
                             {ROLES.map((role) => {
-                                const cap = ROLE_CAPABILITIES[role];
+                                const cap = roleCapabilities[role];
                                 return (
                                     <li key={role} className="text-[11px]">
                                         <span className="font-semibold uppercase tracking-wider text-gray-500">
@@ -487,7 +537,14 @@ function AgentsPageInner() {
                                                                       "Jade",
                                                                   )
                                                                 ? "bg-amber-50 text-amber-700"
-                                                                : "bg-gray-100 text-gray-600"
+                                                                : src.startsWith(
+                                                                        "AustLII",
+                                                                    ) ||
+                                                                    src.includes(
+                                                                        "AustLII",
+                                                                    )
+                                                                  ? "bg-sky-50 text-sky-700"
+                                                                  : "bg-gray-100 text-gray-600"
                                                     }`}
                                                 >
                                                     {src}

@@ -1,6 +1,6 @@
 /**
  * Knowledge-base + playbook tool schemas (adopted from jmclark-lab/mike F211,
- * harmonised for Mike (Australia): descriptions genericised, embeddings via
+ * harmonised for Rose: descriptions genericised, embeddings via
  * Gemini, documents ingested from the Library).
  */
 

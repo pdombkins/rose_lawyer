@@ -28,7 +28,7 @@ import {
     type UserGroup,
     type UserGroupGrant,
     type UserGroupMember,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 
 export default function AdminGroupsPage() {
     const [groups, setGroups] = useState<UserGroup[]>([]);
@@ -322,7 +322,7 @@ export default function AdminGroupsPage() {
                                     )}
                                 </div>
                             )}
-                            <ul className="max-h-80 space-y-1 overflow-y-auto">
+                            <ul className="max-h-96 space-y-1 overflow-y-auto">
                                 {members.map((m) => (
                                     <li
                                         key={m.id}
@@ -336,7 +336,7 @@ export default function AdminGroupsPage() {
                                         ) : (
                                             <Clock
                                                 className="h-3.5 w-3.5 shrink-0 text-amber-500"
-                                                aria-label="Awaiting signup"
+                                                aria-label="Not registered"
                                             />
                                         )}
                                         <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
@@ -347,9 +347,37 @@ export default function AdminGroupsPage() {
                                                 </span>
                                             )}
                                         </span>
-                                        {!m.registered && (
-                                            <span className="text-[11px] text-amber-600">
-                                                awaiting signup
+                                        {/* Registration status. For registered
+                                            students we deliberately show only
+                                            this — no invitation detail. */}
+                                        {m.registered ? (
+                                            <span className="shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                                                Registered
+                                            </span>
+                                        ) : (
+                                            <span className="flex shrink-0 items-center gap-1.5">
+                                                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                                    Not registered
+                                                </span>
+                                                {m.invited ? (
+                                                    <span
+                                                        className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
+                                                        title={
+                                                            m.invited_at
+                                                                ? `Invitation sent ${new Date(m.invited_at).toLocaleString()}`
+                                                                : "Invitation sent"
+                                                        }
+                                                    >
+                                                        Invited
+                                                        {m.invited_at
+                                                            ? ` ${new Date(m.invited_at).toLocaleDateString()}`
+                                                            : ""}
+                                                    </span>
+                                                ) : (
+                                                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                                                        Not invited
+                                                    </span>
+                                                )}
                                             </span>
                                         )}
                                         <button
@@ -360,7 +388,7 @@ export default function AdminGroupsPage() {
                                                     m.id,
                                                 ).then(() => openGroup(openId))
                                             }
-                                            className="text-gray-300 hover:text-red-600"
+                                            className="shrink-0 text-gray-300 hover:text-red-600"
                                             title="Remove from group"
                                         >
                                             <Trash2 className="h-3.5 w-3.5" />
@@ -374,6 +402,19 @@ export default function AdminGroupsPage() {
                                     </li>
                                 )}
                             </ul>
+                            {members.length > 0 && (
+                                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400">
+                                    <span className="inline-flex items-center gap-1">
+                                        <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                        Registered — invitation detail hidden
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <Clock className="h-3 w-3 text-amber-500" />
+                                        Not registered — shows whether/when an
+                                        email invite was sent
+                                    </span>
+                                </p>
+                            )}
                         </>
                     )}
                 </div>

@@ -1,5 +1,5 @@
 /**
- * Private knowledge base (RAG) for Mike Legal AI.
+ * Private knowledge base (RAG) for Rose Legal AI.
  * Ingests documents (chunk + embed) into Supabase pgvector, and retrieves
  * the most relevant chunks for a query with source citations.
  */

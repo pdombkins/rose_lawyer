@@ -9,7 +9,7 @@
  *      misattributed, quoting the supporting passage.
  *   4. If OFF (default): verdict left for HUMAN self-validation. Each
  *      assertion carries outbound Jade + AustLII *search links* that the
- *      user opens in their own browser — Mike never fetches AustLII.
+ *      user opens in their own browser — Rose never fetches AustLII.
  */
 
 import { createServerSupabase } from "../supabase";
@@ -37,12 +37,12 @@ export type AssertionRow = {
 
 const MNC_RE = /\[(\d{4})\]\s+([A-Za-z]+)\s+(\d+)/;
 
-function jadeSearchUrl(citation: string): string {
+export function jadeSearchUrl(citation: string): string {
   return `https://jade.io/search/${encodeURIComponent(citation)}`;
 }
 
-/** Outbound AustLII SEARCH link for the human to click — never fetched by Mike. */
-function austliiSearchUrl(citation: string): string {
+/** Outbound AustLII SEARCH link for the human to click — never fetched by Rose. */
+export function austliiSearchUrl(citation: string): string {
   return `https://www.austlii.edu.au/cgi-bin/sinosrch.cgi?method=boolean&query=${encodeURIComponent(citation)}`;
 }
 

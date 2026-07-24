@@ -63,7 +63,7 @@ async function fetchFeed(url: string): Promise<FeedItem[]> {
     const res = await fetch(url, {
       headers: {
         "User-Agent":
-          "MikeOSS-Australia-regwatch/1.0 (research & educational; RSS reader)",
+          "Rose-Australia-regwatch/1.0 (research & educational; RSS reader)",
         Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
       },
       signal: AbortSignal.timeout(20_000),

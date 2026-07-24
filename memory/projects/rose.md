@@ -1,4 +1,4 @@
-# Project: Mike (Australia)
+# Project: Rose
 
 ## Overview
 Australian fork of Mike OSS — an AI legal document assistant for Australian/NZ law.

@@ -30,7 +30,7 @@ import {
     updateTabularReview,
     updateTabularCell,
     uploadReviewDocument,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import type {
     ColumnConfig,
     Document,

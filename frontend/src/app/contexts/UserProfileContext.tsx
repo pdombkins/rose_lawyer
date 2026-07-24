@@ -18,7 +18,7 @@ import {
     saveApiKey,
     updateUserMfaOnLogin,
     updateUserProfile,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 
 interface UserProfile {
     displayName: string | null;

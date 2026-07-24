@@ -1,7 +1,7 @@
 import { JADE_SYSTEM_PROMPT } from "./tools/jadeTools";
 import { VERIFICATION_SYSTEM_PROMPT } from "./tools/verificationTools";
 
-const SYSTEM_PROMPT_BEFORE_RESEARCH = `You are Mike, an AI legal assistant for lawyers and legal professionals. Help analyze documents, answer legal questions, and draft legal documents.
+const SYSTEM_PROMPT_BEFORE_RESEARCH = `You are Rose, an AI legal assistant for lawyers and legal professionals. Help analyze documents, answer legal questions, and draft legal documents.
 
 CORE RULES:
 - Be precise, professional, and evidence-aware.

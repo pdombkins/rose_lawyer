@@ -8,7 +8,7 @@ import {
     MfaVerificationPopup,
     needsMfaVerification,
 } from "@/app/components/popups/MfaVerificationPopup";
-import { isMfaRequiredError } from "@/app/lib/mikeApi";
+import { isMfaRequiredError } from "@/app/lib/roseApi";
 import {
     accountGlassIconButtonClassName,
     accountGlassInputClassName,
@@ -18,7 +18,7 @@ import {
     listPats,
     revokePat,
     type Pat,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import { AccountSection } from "../AccountSection";
 
 const MODEL_API_KEY_FIELDS = [
@@ -57,7 +57,7 @@ const OTHER_API_KEY_FIELDS = [
         label: "CourtListener API Key",
         placeholder: "Token...",
         description:
-            "Add a CourtListener API key if you want the latest CourtListener data. Otherwise, Mike will use the bulk data hosted by us.",
+            "Add a CourtListener API key if you want the latest CourtListener data. Otherwise, Rose will use the bulk data hosted by us.",
     },
 ] as const;
 
@@ -72,7 +72,7 @@ export default function ApiKeysPage() {
             <p className="text-sm text-gray-500 mb-4">
                 You must provide your own API keys for the app to work or add
                 your API keys into the .env file if you are running your own
-                instance of Mike. All API keys are encrypted in storage.
+                instance of Rose. All API keys are encrypted in storage.
             </p>
             <AccountSection>
                 {MODEL_API_KEY_FIELDS.map((field, index) => (
@@ -134,7 +134,7 @@ export default function ApiKeysPage() {
 }
 
 /**
- * C007 — personal access tokens for the Mike MCP server (/mcp-server).
+ * C007 — personal access tokens for the Rose MCP server (/mcp-server).
  * Tokens are shown once at creation; only hashes are stored.
  */
 function PatsSection() {
@@ -177,7 +177,7 @@ function PatsSection() {
             </h3>
             <p className="mb-3 text-sm text-gray-500">
                 Personal access tokens let external agent hosts (Claude, Cowork,
-                Copilot Studio) call Mike&apos;s legal tools via the MCP
+                Copilot Studio) call Rose&apos;s legal tools via the MCP
                 endpoint <code className="text-xs">/mcp-server</code>. Tokens
                 are shown once — copy them immediately.
             </p>

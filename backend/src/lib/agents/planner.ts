@@ -5,18 +5,33 @@
  */
 
 import { completeText, type UserApiKeys } from "../llm";
+import { getJadeAccessApproved } from "../appSettings";
 import {
-    ROLE_TOOLSETS,
+    roleToolsets,
     type AgentPlan,
     type AgentRole,
     type PlanStep,
 } from "./types";
 
-const PLANNER_PROMPT = `You are the planning module of Mike (Australia), an AI legal assistant. Decompose the user's request into a short plan of specialist agent steps.
+/**
+ * The planner's own description of what "research" can draw on must match
+ * what's actually true: Jade.io is only live when an admin has approved it
+ * (jade_access_approved); otherwise Rose falls back to AustLII manual
+ * verification only (the user opens the link and verifies themselves).
+ */
+function buildPlannerPrompt(jadeApproved: boolean): string {
+    const researchLine = jadeApproved
+        ? "- research: legal/document research via knowledge base + Jade.io case law/legislation search (read-only)"
+        : "- research: legal/document research via knowledge base + citation verification (read-only). Jade.io access is NOT currently approved on this instance — case-law lookups fall back to a human-verified AustLII search link, not automated Jade.io search.";
+    const caseLawLine = jadeApproved
+        ? "- Australian law context; Jade.io is the case-law source when citations need verifying; AGLC4 citations."
+        : "- Australian law context; Jade.io access is not approved — citation verification falls back to AustLII, which the user must check themselves; AGLC4 citations.";
+
+    return `You are the planning module of Rose, an AI legal assistant. Decompose the user's request into a short plan of specialist agent steps.
 
 Available roles and their capabilities:
 - intake: characterise the matter, parties, jurisdiction, inputs (read-only)
-- research: legal/document research via knowledge base + Jade.io (read-only)
+${researchLine}
 - drafting: produce or edit documents (write-capable)
 - review: review drafts/documents against playbooks and AU law (read-only)
 - verify: validate citations and check they support assertions (read-only)
@@ -26,10 +41,11 @@ Rules:
 - Steps that do not depend on each other should have disjoint depends_on so they can run in parallel.
 - depends_on lists the positions (1-based) of prerequisite steps.
 - Every instruction must be self-contained and specific to THIS request.
-- Australian law context; Jade.io is the only case-law source; AGLC4 citations.
+${caseLawLine}
 
 Respond with ONLY a JSON object, no markdown fences:
 {"title": "<short run title>", "steps": [{"position": 1, "depends_on": [], "role": "intake|research|drafting|review|verify", "instruction": "<what this step must do>"}]}`;
+}
 
 function isRole(v: unknown): v is AgentRole {
     return (
@@ -41,7 +57,12 @@ function isRole(v: unknown): v is AgentRole {
     );
 }
 
-export function sanitizePlan(raw: unknown, fallbackTitle: string): AgentPlan {
+export function sanitizePlan(
+    raw: unknown,
+    fallbackTitle: string,
+    jadeApproved: boolean,
+): AgentPlan {
+    const toolsets = roleToolsets(jadeApproved);
     const obj =
         raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
     const rawSteps = Array.isArray(obj.steps) ? obj.steps : [];
@@ -65,9 +86,10 @@ export function sanitizePlan(raw: unknown, fallbackTitle: string): AgentPlan {
             depends_on: [...new Set(depends)],
             role,
             instruction: instruction.slice(0, 4000),
-            // Tool allowlists are ALWAYS derived server-side from the role —
-            // never trusted from model output (C013 guardrails).
-            tool_allowlist: ROLE_TOOLSETS[role],
+            // Tool allowlists are ALWAYS derived server-side from the role and
+            // the live Jade-access toggle — never trusted from model output
+            // (C013 guardrails).
+            tool_allowlist: toolsets[role],
         });
         if (steps.length >= 6) break;
         void i;
@@ -78,7 +100,7 @@ export function sanitizePlan(raw: unknown, fallbackTitle: string): AgentPlan {
             depends_on: [],
             role: "research",
             instruction: fallbackTitle,
-            tool_allowlist: ROLE_TOOLSETS.research,
+            tool_allowlist: toolsets.research,
         });
     }
     const title =
@@ -93,9 +115,10 @@ export async function planRun(args: {
     model: string;
     apiKeys?: UserApiKeys;
 }): Promise<AgentPlan> {
+    const jadeApproved = await getJadeAccessApproved();
     const text = await completeText({
         model: args.model,
-        systemPrompt: PLANNER_PROMPT,
+        systemPrompt: buildPlannerPrompt(jadeApproved),
         user: args.request,
         maxTokens: 2048,
         apiKeys: args.apiKeys,
@@ -111,5 +134,5 @@ export async function planRun(args: {
     } catch {
         parsed = null;
     }
-    return sanitizePlan(parsed, args.request.slice(0, 120));
+    return sanitizePlan(parsed, args.request.slice(0, 120), jadeApproved);
 }

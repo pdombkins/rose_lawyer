@@ -236,7 +236,7 @@ projectsRouter.post("/", requireAuth, async (req, res) => {
   const missingSharedUsers = await findMissingUserEmails(db, cleanedSharedWith);
   if (missingSharedUsers.length > 0) {
     return void res.status(400).json({
-      detail: `${missingSharedUsers[0]} does not belong to a Mike user.`,
+      detail: `${missingSharedUsers[0]} does not belong to a Rose user.`,
     });
   }
 
@@ -375,7 +375,7 @@ projectsRouter.patch("/:projectId", requireAuth, async (req, res) => {
     );
     if (missingSharedUsers.length > 0) {
       return void res.status(400).json({
-        detail: `${missingSharedUsers[0]} does not belong to a Mike user.`,
+        detail: `${missingSharedUsers[0]} does not belong to a Rose user.`,
       });
     }
   }
@@ -1117,7 +1117,7 @@ projectsRouter.put("/:projectId/members", requireAuth, async (req, res) => {
   if (!target?.id)
     return void res
       .status(404)
-      .json({ detail: "No Mike user with that email" });
+      .json({ detail: "No Rose user with that email" });
   if (target.id === access.project.user_id)
     return void res
       .status(400)

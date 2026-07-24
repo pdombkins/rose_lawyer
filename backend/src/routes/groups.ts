@@ -21,9 +21,27 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { createServerSupabase } from "../lib/supabase";
-import { loadProfileUsersByEmail } from "../lib/userLookup";
+import { loadProfileUsersByEmail, loadActivatedEmails } from "../lib/userLookup";
 import { recordAudit } from "../lib/audit";
 import { frontendBaseUrl } from "../lib/urls";
+import { isEmailConfigured, sendEmail, escapeHtml } from "../lib/email";
+
+/** Branded invitation email body containing the Supabase action link. */
+function inviteEmailHtml(groupName: string, actionLink: string): string {
+  const safeGroup = escapeHtml(groupName);
+  return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;color:#111827;line-height:1.5">
+  <h2 style="margin:0 0 12px">You're invited to Rose</h2>
+  <p>You've been added to <strong>${safeGroup}</strong> on Rose — an AI legal assistant for research and educational use.</p>
+  <p>Click below to set up your account and get started:</p>
+  <p style="margin:20px 0">
+    <a href="${actionLink}" style="display:inline-block;background:#111827;color:#ffffff;padding:11px 20px;border-radius:6px;text-decoration:none;font-weight:600">Accept invitation</a>
+  </p>
+  <p style="color:#6b7280;font-size:12px">If the button doesn't work, copy this link into your browser:<br>
+    <span style="word-break:break-all">${actionLink}</span>
+  </p>
+  <p style="color:#9ca3af;font-size:12px;margin-top:24px">Rose — research &amp; educational use only. Not legal advice.</p>
+</div>`;
+}
 
 export const groupsRouter = Router();
 groupsRouter.use(requireAuth, requireAdmin);
@@ -162,7 +180,7 @@ groupsRouter.get("/:id", async (req, res) => {
     .maybeSingle();
   if (!group) return void res.status(404).json({ detail: "Group not found" });
 
-  const [{ data: members }, { data: grants }, { userByEmail }] =
+  const [{ data: members }, { data: grants }, { userByEmail }, activatedEmails] =
     await Promise.all([
       db
         .from("user_group_members")
@@ -174,21 +192,58 @@ groupsRouter.get("/:id", async (req, res) => {
         .select("id, project_id, role, created_at, projects(name)")
         .eq("group_id", req.params.id),
       loadProfileUsersByEmail(db),
+      // Ground truth for "actually registered": confirmed / has signed in.
+      // A profile row alone is NOT enough — a trigger creates it when an
+      // invite provisions the account, before the student has accepted.
+      loadActivatedEmails(db),
     ]);
+
+  const memberRows = (members ?? []) as {
+    id: string;
+    email: string;
+    user_id: string | null;
+    created_at: string;
+  }[];
+
+  // Invitation status per member email. The invite endpoint records one
+  // `invitations` row each time an email invite is sent, so a member can
+  // have several — we surface the most recent send date. (No group_id on
+  // that table, so we look up by the emails in this group.)
+  const emails = memberRows.map((m) => m.email);
+  const lastInvitedByEmail = new Map<string, string>();
+  if (emails.length > 0) {
+    const { data: invites } = await db
+      .from("invitations")
+      .select("email, created_at")
+      .in("email", emails);
+    for (const inv of (invites ?? []) as {
+      email: string;
+      created_at: string;
+    }[]) {
+      const prev = lastInvitedByEmail.get(inv.email);
+      if (!prev || inv.created_at > prev) {
+        lastInvitedByEmail.set(inv.email, inv.created_at);
+      }
+    }
+  }
 
   res.json({
     group,
-    members: ((members ?? []) as {
-      id: string;
-      email: string;
-      user_id: string | null;
-      created_at: string;
-    }[]).map((m) => {
+    members: memberRows.map((m) => {
       const u = userByEmail.get(m.email);
+      const invitedAt = lastInvitedByEmail.get(m.email) ?? null;
+      // Registered = the student has actually activated their account
+      // (backfilled user_id, or confirmed/signed-in in auth). Merely having
+      // been provisioned by an invite (which creates a profile row via a
+      // trigger) does NOT count.
+      const registered =
+        Boolean(m.user_id) || activatedEmails.has(m.email.toLowerCase());
       return {
         ...m,
-        registered: Boolean(m.user_id || u?.id),
+        registered,
         display_name: u?.display_name ?? null,
+        invited: invitedAt !== null,
+        invited_at: invitedAt,
       };
     }),
     grants: ((grants ?? []) as unknown as {
@@ -252,18 +307,30 @@ groupsRouter.post("/:id/members", async (req, res) => {
   res.json({ ok: true, added: valid.length, invalid });
 });
 
-// ── POST /groups/:id/invite — email a Supabase invite to unregistered members ─
+// ── POST /groups/:id/invite — email a set-up invite to unregistered members ──
 //
-// Match-on-signup means members can exist without accounts. This sends a
-// set-password invite to every member who doesn't yet have an account, so a
-// whole cohort can be onboarded in one click. Already-registered members are
-// skipped. Note: delivery depends on the Supabase project's email config —
-// the built-in SMTP is heavily rate-limited, so configure custom SMTP for a
-// full class.
+// Match-on-signup means members can exist without accounts. This onboards a
+// whole cohort in one click: for every member who doesn't yet have an account
+// we provision an invite via Supabase Admin `generateLink` (which creates the
+// user and returns an action link WITHOUT sending anything) and then deliver
+// our own branded email through Resend.
+//
+// Why not `inviteUserByEmail`? That routes through Supabase Auth's built-in
+// mailer, which on the default project is rate-limited to a few emails/hour
+// (429 over_email_send_rate_limit) — it silently fails for a whole class.
+// `generateLink` + Resend sidesteps that limit entirely and uses the same
+// email transport as our notifications. Already-registered members are skipped.
 
 groupsRouter.post("/:id/invite", async (req, res) => {
   const userId = res.locals.userId as string;
   const db = createServerSupabase();
+
+  if (!isEmailConfigured()) {
+    return void res.status(400).json({
+      detail:
+        "Email is not configured on this instance. Set RESEND_API_KEY (and NOTIFICATIONS_FROM_EMAIL) to send invitations.",
+    });
+  }
 
   const { data: group } = await db
     .from("user_groups")
@@ -283,24 +350,53 @@ groupsRouter.post("/:id/invite", async (req, res) => {
   const targets = rows
     .map((m) => m.email)
     .filter((email) => !userByEmail.has(email));
+  const skippedRegistered = rows.length - targets.length;
 
   const redirectTo = `${frontendBaseUrl()}/login`;
   let invited = 0;
-  const alreadyRegistered: string[] = [];
   const failed: { email: string; reason: string }[] = [];
 
   for (const email of targets) {
-    const { error } = await db.auth.admin.inviteUserByEmail(email, {
-      redirectTo,
+    // 1. Provision an action link WITHOUT sending Supabase's own email.
+    //    First-time members get an "invite" (creates the account + set-up
+    //    link). If the account already exists (e.g. a previous invite that
+    //    wasn't accepted), fall back to a "magiclink" so re-sends still work.
+    let actionLink: string | null = null;
+    const inviteLink = await db.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo },
     });
-    if (error) {
-      if (error.message.toLowerCase().includes("already")) {
-        alreadyRegistered.push(email);
-      } else {
-        failed.push({ email, reason: error.message });
+    if (inviteLink.error) {
+      const magic = await db.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo },
+      });
+      if (magic.error) {
+        failed.push({ email, reason: magic.error.message });
+        continue;
       }
+      actionLink = magic.data.properties?.action_link ?? null;
+    } else {
+      actionLink = inviteLink.data.properties?.action_link ?? null;
+    }
+    if (!actionLink) {
+      failed.push({ email, reason: "No action link was generated" });
       continue;
     }
+
+    // 2. Deliver our own branded email via Resend.
+    const sent = await sendEmail({
+      to: email,
+      subject: `You're invited to Rose — ${group.name}`,
+      html: inviteEmailHtml(group.name as string, actionLink),
+    });
+    if (!sent.ok) {
+      failed.push({ email, reason: sent.error });
+      continue;
+    }
+
     invited += 1;
     // Record for admin visibility (best-effort; ignore dupes).
     await db.from("invitations").insert({ email, invited_by: userId });
@@ -314,7 +410,7 @@ groupsRouter.post("/:id/invite", async (req, res) => {
     detail: {
       action: "bulk_invite",
       invited,
-      already_registered: alreadyRegistered.length,
+      already_registered: skippedRegistered,
       failed: failed.length,
     },
   });
@@ -322,7 +418,7 @@ groupsRouter.post("/:id/invite", async (req, res) => {
   res.json({
     ok: true,
     invited,
-    skipped_registered: alreadyRegistered.length,
+    skipped_registered: skippedRegistered,
     failed,
   });
 });

@@ -15,7 +15,7 @@ import {
     importClausesCsv,
     listClauses,
     type Clause,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import CsvImportButton from "@/app/components/CsvImportButton";
 
 const AGREEMENT_TYPES = [

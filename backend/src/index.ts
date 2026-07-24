@@ -200,7 +200,7 @@ app.use("/groups", groupsRouter);
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
-  console.log(`Mike backend running on port ${PORT}`);
+  console.log(`Rose backend running on port ${PORT}`);
 });
 
 // P1 — resume agent runs orphaned by a restart (completed steps preserved).

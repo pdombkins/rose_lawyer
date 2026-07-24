@@ -595,7 +595,7 @@ export async function runLLMStream(params: {
   flushText();
 
   // ---------------------------------------------------------------------------
-  // Cost tracking: calculate, store, and emit cost event (Mike Australia)
+  // Cost tracking: calculate, store, and emit cost event (Rose Australia)
   // ---------------------------------------------------------------------------
   if (llmResult?.inputTokens || llmResult?.outputTokens) {
     try {

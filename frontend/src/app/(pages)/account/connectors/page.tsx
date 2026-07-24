@@ -18,7 +18,7 @@ import {
 } from "@/app/components/popups/MfaVerificationPopup";
 import {
     type McpConnectorSummary,
-    MikeApiError,
+    RoseApiError,
     createMcpConnector,
     deleteMcpConnector,
     getMcpConnector,
@@ -28,7 +28,7 @@ import {
     setMcpToolEnabled,
     startMcpConnectorOAuth,
     updateMcpConnector,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import {
     accountGlassIconButtonClassName,
     accountGlassInputClassName,
@@ -365,7 +365,7 @@ export default function ConnectorsPage() {
                     refreshed = await refreshMcpConnectorTools(connector.id);
                 } catch (err) {
                     if (
-                        err instanceof MikeApiError &&
+                        err instanceof RoseApiError &&
                         err.code === "oauth_required"
                     ) {
                         replaceConnector(connector);
@@ -491,7 +491,7 @@ export default function ConnectorsPage() {
                     replaceConnector(await refreshMcpConnectorTools(connectorId));
                 } catch (err) {
                     if (
-                        err instanceof MikeApiError &&
+                        err instanceof RoseApiError &&
                             err.code === "oauth_required"
                     ) {
                         await connectConnectorOAuth(connectorId);

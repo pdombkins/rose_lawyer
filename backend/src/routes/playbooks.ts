@@ -1,5 +1,5 @@
 /**
- * Playbooks CRUD — Mike (Australia).
+ * Playbooks CRUD — Rose.
  *
  * Manages the `playbooks` + `playbook_rules` tables that back the assistant's
  * `list_playbooks` / `review_against_playbook` tools. Owner-scoped by the

@@ -1,5 +1,5 @@
 /**
- * Mike API client — all requests to the Node.js backend.
+ * Rose API client — all requests to the Node.js backend.
  * Attaches the Supabase auth token for user authentication.
  */
 
@@ -45,13 +45,13 @@ const devLog = (...args: Parameters<typeof console.log>) => {
     if (isDev) console.log(...args);
 };
 
-export class MikeApiError extends Error {
+export class RoseApiError extends Error {
     status: number;
     code: string | null;
 
     constructor(args: { message: string; status: number; code?: string | null }) {
         super(args.message);
-        this.name = "MikeApiError";
+        this.name = "RoseApiError";
         this.status = args.status;
         this.code = args.code ?? null;
     }
@@ -59,7 +59,7 @@ export class MikeApiError extends Error {
 
 export function isMfaRequiredError(error: unknown) {
     return (
-        error instanceof MikeApiError &&
+        error instanceof RoseApiError &&
         error.status === 403 &&
         error.code === "mfa_verification_required"
     );
@@ -138,7 +138,7 @@ async function toApiError(response: Response, path: string) {
             code: parsed.code,
             detail: parsed.detail,
         });
-        return new MikeApiError({
+        return new RoseApiError({
             status: response.status,
             code: typeof parsed.code === "string" ? parsed.code : null,
             message:
@@ -152,7 +152,7 @@ async function toApiError(response: Response, path: string) {
             status: response.status,
             bodyPreview: text.slice(0, 200),
         });
-        return new MikeApiError({
+        return new RoseApiError({
             status: response.status,
             message: text || `API error: ${response.status}`,
         });
@@ -333,6 +333,25 @@ export async function adminUpdateSettings(
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
+    });
+}
+
+export interface AdminEmailStatus {
+    configured: boolean;
+    fromAddress: string;
+}
+
+export async function adminGetEmailStatus(): Promise<AdminEmailStatus> {
+    return apiRequest<AdminEmailStatus>("/admin/email-status");
+}
+
+export async function adminSendTestEmail(
+    to?: string,
+): Promise<{ ok: true; to: string }> {
+    return apiRequest<{ ok: true; to: string }>("/admin/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(to ? { to } : {}),
     });
 }
 
@@ -731,6 +750,49 @@ export async function getLibrary(
     kind: LibraryKind,
 ): Promise<LibraryCollection> {
     return apiRequest<LibraryCollection>(`/library/${kind}`);
+}
+
+// ── Legal resources (Library → Legal resources tab) ───────────────────────────
+
+export type LegalResourceCategory =
+    | "validation"
+    | "legislation"
+    | "case_law"
+    | "regulatory_feed";
+
+export type LegalResourceAccess =
+    | "ai_auto_fetched"
+    | "ai_when_jade_approved"
+    | "user_only";
+
+export interface LegalResource {
+    id: string;
+    category: LegalResourceCategory;
+    jurisdiction: string;
+    title: string;
+    url: string;
+    access: LegalResourceAccess;
+    note?: string;
+    aiAccessible: boolean;
+    accessLabel: string;
+}
+
+export interface LegalResourcesResponse {
+    jadeAccessApproved: boolean;
+    resources: LegalResource[];
+}
+
+export async function getLegalResources(): Promise<LegalResourcesResponse> {
+    return apiRequest<LegalResourcesResponse>("/library/legal-resources");
+}
+
+export interface JadeAccessStatus {
+    jadeAccessApproved: boolean;
+}
+
+/** Lightweight, non-admin check of whether Jade.io tools are actually live. */
+export async function getJadeAccessStatus(): Promise<JadeAccessStatus> {
+    return apiRequest<JadeAccessStatus>("/jade/access-status");
 }
 
 export async function uploadLibraryDocument(
@@ -2274,6 +2336,10 @@ export type UserGroupMember = {
     registered: boolean;
     display_name: string | null;
     created_at: string;
+    /** Whether an email invitation has been sent to this member. */
+    invited: boolean;
+    /** ISO timestamp of the most recent invitation send, or null. */
+    invited_at: string | null;
 };
 
 export type UserGroupGrant = {

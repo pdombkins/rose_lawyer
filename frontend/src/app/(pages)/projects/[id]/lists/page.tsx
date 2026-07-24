@@ -32,7 +32,7 @@ import {
     type ListItemKind,
     type ListItemStatus,
     type ProjectMember,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import {
     ProjectSectionToolbar,
     useProjectWorkspace,

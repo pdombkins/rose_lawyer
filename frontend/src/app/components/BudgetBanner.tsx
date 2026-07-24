@@ -3,13 +3,13 @@
 /**
  * C077 — soft-budget banner. Shown when the user has set a monthly budget
  * and this month's spend has reached 100% of it. Informational only —
- * Mike never blocks requests over budget. Dismissible per session.
+ * Rose never blocks requests over budget. Dismissible per session.
  */
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import Link from "next/link";
-import { getUserUsage } from "@/app/lib/mikeApi";
+import { getUserUsage } from "@/app/lib/roseApi";
 
 export default function BudgetBanner() {
     const [message, setMessage] = useState<string | null>(null);

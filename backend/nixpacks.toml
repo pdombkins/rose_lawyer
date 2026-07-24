@@ -1,4 +1,4 @@
-# Railway / nixpacks build for the Mike backend.
+# Railway / nixpacks build for the Rose backend.
 #
 # libreoffice is required for DOCX/PPTX/XLSX -> PDF conversion (document
 # display and exports). The "..." keeps nixpacks' default packages (Node).

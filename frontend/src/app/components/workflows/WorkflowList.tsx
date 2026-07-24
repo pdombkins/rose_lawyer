@@ -13,13 +13,13 @@ import {
     listHiddenWorkflows,
     hideWorkflow,
     unhideWorkflow,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import type { Workflow } from "../shared/types";
 import { UseWorkflowModal } from "./UseWorkflowModal";
 import { NewWorkflowModal } from "./NewWorkflowModal";
 import { TableToolbar } from "../shared/TableToolbar";
 import { RowActionMenuItems, RowActions } from "../shared/RowActions";
-import { MikeIcon } from "@/app/components/chat/mike-icon";
+import { RoseIcon } from "@/app/components/chat/rose-icon";
 import { PageHeader } from "@/app/components/shared/PageHeader";
 import { PillButton } from "@/app/components/ui/pill-button";
 import { TabPillButton } from "@/app/components/ui/tab-pill-button";
@@ -741,8 +741,8 @@ export function WorkflowList() {
                                 <TableCell className="w-44">
                                     {wf.is_system ? (
                                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
-                                            <MikeIcon size={14} />
-                                            Mike (Australia)
+                                            <RoseIcon size={14} />
+                                            Rose
                                         </span>
                                     ) : wf.is_owner !== false ? (
                                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">

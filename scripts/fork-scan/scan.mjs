@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Mike (Australia) — Fork & Commit Scanner
+ * Rose — Fork & Commit Scanner
  * Scans github.com/willchen96/mike (upstream Mike OSS) for:
  *   - new commits on upstream
  *   - forks with their own commits (features you may want to adopt)
@@ -38,7 +38,7 @@ let rateLimited = false;
 
 async function gh(path) {
   if (rateRemaining <= 2) { rateLimited = true; return null; }
-  const headers = { Accept: "application/vnd.github+json", "User-Agent": "mike-australia-fork-scan" };
+  const headers = { Accept: "application/vnd.github+json", "User-Agent": "rose-australia-fork-scan" };
   if (token) headers.Authorization = `Bearer ${token}`;
   let res;
   try {
@@ -261,7 +261,7 @@ function writeReports(totalForks, activeForks) {
 <div class="summary">
   ${firstRun ? "<b>First full scan</b> — everything below is the baseline." : "<b>Incremental scan</b> — only items new since the last scan."}<br>
   Upstream <b>${UPSTREAM}</b> · ${totalForks} forks (${activeForks} with original work) · <b>${items.length}</b> new feature commit${items.length === 1 ? "" : "s"} found.<br>
-  Tick the features you want, then click <b>Copy request</b> and paste it to Claude to adopt them into Mike (Australia).
+  Tick the features you want, then click <b>Copy request</b> and paste it to Claude to adopt them into Rose.
 </div>
 ${scanNotes.map(n => `<div class="note">⚠️ ${esc(n)}</div>`).join("")}
 ${items.length === 0 ? `<p class="empty">Nothing new since the last scan.</p>` : rows}
@@ -272,7 +272,7 @@ function refresh(){
   const bar=document.getElementById('bar');
   bar.style.display=ids.length?'flex':'none';
   document.getElementById('sel').textContent=ids.length+' selected:';
-  document.getElementById('cmd').textContent='Adopt '+ids.join(', ')+' from the fork scan register into Mike (Australia).';
+  document.getElementById('cmd').textContent='Adopt '+ids.join(', ')+' from the fork scan register into Rose.';
 }
 document.addEventListener('change',refresh);
 function copyCmd(){navigator.clipboard.writeText(document.getElementById('cmd').textContent).then(()=>{

@@ -40,6 +40,39 @@ export async function loadProfileUsersByEmail(db: Db) {
     return { userByEmail, userById };
 }
 
+/**
+ * Emails that have ACTUALLY activated their account — i.e. confirmed their
+ * email or signed in at least once — read from auth.users via the admin API.
+ *
+ * This is deliberately distinct from "has a user_profiles row": a DB trigger
+ * creates the profile row the moment an account is provisioned (e.g. when a
+ * group invite calls generateLink), which happens BEFORE the student accepts.
+ * So profile-existence over-reports registration; auth activation is the
+ * ground truth for "this person has actually registered".
+ */
+export async function loadActivatedEmails(db: Db): Promise<Set<string>> {
+    const activated = new Set<string>();
+    const perPage = 1000;
+    // Page through all auth users (admin-only surface; class-sized instances).
+    for (let page = 1; page <= 50; page++) {
+        const { data, error } = await db.auth.admin.listUsers({
+            page,
+            perPage,
+        });
+        const users = data?.users ?? [];
+        if (error || users.length === 0) break;
+        for (const u of users) {
+            const email = normalizeEmail(u.email);
+            if (!email) continue;
+            const activatedAt =
+                u.confirmed_at ?? u.email_confirmed_at ?? u.last_sign_in_at ?? null;
+            if (activatedAt) activated.add(email);
+        }
+        if (users.length < perPage) break;
+    }
+    return activated;
+}
+
 export async function findProfileUserByEmail(db: Db, email: string) {
     const normalized = normalizeEmail(email);
     if (!normalized) return null;

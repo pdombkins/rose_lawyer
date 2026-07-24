@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BarChart3, Loader2 } from "lucide-react";
-import { adminGetAnalytics, type AdminAnalytics } from "@/app/lib/mikeApi";
+import { adminGetAnalytics, type AdminAnalytics } from "@/app/lib/roseApi";
 
 function aud(n: number): string {
     return `A$${n.toFixed(2)}`;

@@ -9,10 +9,10 @@ import {
     adminSetDocumentLinks,
     uploadStandaloneDocument,
     deleteDocument,
-    MikeApiError,
+    RoseApiError,
     type AdminDocLibraryEntry,
     type AdminDocLibraryProject,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 
 export default function AdminDocumentsPage() {
     const router = useRouter();
@@ -45,7 +45,7 @@ export default function AdminDocumentsPage() {
             setProjects(data.projects);
         } catch (err) {
             setError(
-                err instanceof MikeApiError
+                err instanceof RoseApiError
                     ? err.message
                     : "Could not load documents.",
             );
@@ -128,7 +128,7 @@ export default function AdminDocumentsPage() {
             setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
         } catch (err) {
             setError(
-                err instanceof MikeApiError ? err.message : "Delete failed.",
+                err instanceof RoseApiError ? err.message : "Delete failed.",
             );
         } finally {
             setDeletingId(null);

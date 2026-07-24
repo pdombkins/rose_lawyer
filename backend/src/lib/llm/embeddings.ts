@@ -1,7 +1,7 @@
 /**
  * Text embeddings for the private knowledge base.
  *
- * Mike (Australia): uses Google Gemini `gemini-embedding-001` at 1536
+ * Rose: uses Google Gemini `gemini-embedding-001` at 1536
  * dimensions (matches the vector(1536) columns + HNSW index in the
  * knowledge-base migration). Reuses the existing GEMINI_API_KEY — no extra
  * provider is required.

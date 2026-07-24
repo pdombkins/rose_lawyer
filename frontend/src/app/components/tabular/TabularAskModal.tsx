@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Grid2x2Check, Loader2, X } from "lucide-react";
-import { getLibrary, tabularAsk } from "@/app/lib/mikeApi";
+import { getLibrary, tabularAsk } from "@/app/lib/roseApi";
 import type { Document } from "@/app/components/shared/types";
 
 interface Props {

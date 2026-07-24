@@ -1,14 +1,14 @@
-# Memory — Mike (Australia)
+# Memory — Rose
 
 ## Me
-Peter Dombkins, Adjunct Associate Professor in Legal Transformation (UNSW). Building Mike (Australia) as a **research and educational** project for teaching law students about legal technology — not for commercial use.
+Peter Dombkins, Adjunct Associate Professor in Legal Transformation (UNSW). Building Rose as a **research and educational** project for teaching law students about legal technology — not for commercial use.
 Email: pdombkins@gmail.com
 GitHub: pdombkins/mikeOSS_Australia
 
 ## Project
-**Mike (Australia)** — Australian fork of Mike OSS. AI legal assistant for Australian/NZ law. **For research and educational purposes only** (not commercial; not legal advice).
+**Rose** — Australian fork of Mike OSS. AI legal assistant for Australian/NZ law. **For research and educational purposes only** (not commercial; not legal advice).
 - Repo: https://github.com/pdombkins/mikeOSS_Australia
-- Website: mikeoss.com
+- Website: rose.lawyer
 - Stack: Next.js 16 (Turbopack) frontend · Express TypeScript backend (`tsx watch`) · Supabase (auth + Postgres) · Cloudflare R2
 
 ## Key Architecture
@@ -23,9 +23,9 @@ GitHub: pdombkins/mikeOSS_Australia
 ## Terms & Abbreviations
 | Term | Meaning |
 |------|---------|
-| **Mike** | The platform (Mike OSS, Australian fork) |
+| **Rose** | The platform (Mike OSS, Australian fork) |
 | **Jade** | jade.io (BarNet) — primary AU legal source when admin-approved: citation validation + judgment fetch (AI content-check). Requires BarNet's written permission for automated access |
-| **AustLII** | Australasian Legal Information Institute — **default fallback, human-validated only**, when Jade access is off or unapproved. Mike never scrapes or fetches AustLII automatically (AUP prohibits automated/AI use) — it only computes an outbound AustLII search link, which the user opens and checks themselves, then records their own verdict |
+| **AustLII** | Australasian Legal Information Institute — **default fallback, human-validated only**, when Jade access is off or unapproved. Rose never scrapes or fetches AustLII automatically (AUP prohibits automated/AI use) — it only computes an outbound AustLII search link, which the user opens and checks themselves, then records their own verdict |
 | **auslaw-mcp** | Third-party MCP wrapper for AustLII — NOT used (would require automated fetch, contrary to AustLII's AUP) |
 | **AGLC4** | Australian Guide to Legal Citation, 4th edition — citation format standard |
 | **MNC** | Medium Neutral Citation — e.g. [2024] HCA 5 |
@@ -43,7 +43,7 @@ GitHub: pdombkins/mikeOSS_Australia
 - **Document fetch** (`fetchJadeDocument`): `jade.io/content/ext/mnc/...` (may return SPA shell)
 - **Tools**: `jade_search_cases`, `jade_search_legislation`, `jade_validate_citation`, `jade_fetch_document`, `jade_format_citation`
 - **⚠️ Permission**: automated Jade.io (AI content-check) access requires BarNet's prior written permission, gated behind an admin toggle (`app_settings` Jade-access-approved flag) — for research/education use only
-- **AustLII fallback (default when Jade access is off/unapproved)**: Mike computes an outbound AustLII **search link** only (`austliiSearchUrl()` in `backend/src/lib/verification/assertionCheck.ts`) — it is never fetched or scraped server-side. The human user opens it in their own browser, reviews the result, and records their own verdict via `PATCH /verify/:id/assertions/:assertionId`. This is the C024 Deep-verify human self-validation path; see `/verify` page
+- **AustLII fallback (default when Jade access is off/unapproved)**: Rose computes an outbound AustLII **search link** only (`austliiSearchUrl()` in `backend/src/lib/verification/assertionCheck.ts`) — it is never fetched or scraped server-side. The human user opens it in their own browser, reviews the result, and records their own verdict via `PATCH /verify/:id/assertions/:assertionId`. This is the C024 Deep-verify human self-validation path; see `/verify` page
 - **No auslaw-mcp** (would require automated AustLII fetch, contrary to its AUP)
 
 ## Cost Tracking
@@ -61,11 +61,11 @@ npm run dev --prefix frontend  # port 3000
 - SQL migrations: run manually in Supabase SQL Editor (sandbox has no internet)
 
 ## Fork Scan (feature discovery)
-- Upstream: `willchen96/mike` (Mike OSS). Scanner: `scripts/fork-scan/scan.mjs` — runs in background on every launch via `Start Mike.command`; report auto-opens only when new items found
+- Upstream: `willchen96/mike` (Mike OSS). Scanner: `scripts/fork-scan/scan.mjs` — runs in background on every launch via `Start Rose.command`; report auto-opens only when new items found
 - Register: `scripts/fork-scan/register.json` (seen forks/commits, feature IDs F001…). Reports: `scripts/fork-scan/reports/latest.html` + `latest.md`. Log: `last-scan.log`
 - First run = full baseline; later runs incremental (skips forks whose `pushed_at` is unchanged)
 - No GitHub token by default (60 req/hr); optional token via `GITHUB_TOKEN` or `scripts/fork-scan/.token` (gitignored)
-- **Adoption workflow**: when Peter says "Adopt F003…" → look up ID in `register.json` → fetch `https://github.com/{repo}/commit/{sha}.patch` → adapt into Mike (Australia) (respect Jade-only rules, AGPL-3.0) → set that feature's `status` to `"adopted"` in register
+- **Adoption workflow**: when Peter says "Adopt F003…" → look up ID in `register.json` → fetch `https://github.com/{repo}/commit/{sha}.patch` → adapt into Rose (respect Jade-only rules, AGPL-3.0) → set that feature's `status` to `"adopted"` in register
 - Force full rescan: `node scripts/fork-scan/scan.mjs --reset`
 
 ## Adopted Fork Features (2026-07-19, branch `adopt-fork-features`)
@@ -77,11 +77,11 @@ npm run dev --prefix frontend  # port 3000
 - Old `chatTools.ts` / `legalSourcesTools/` removed — jade/verification tools now live in `backend/src/lib/chat/tools/`
 
 ## Competitor Scan (feature discovery)
-- Tracks feature announcements from **Harvey** (harvey.ai), **Legora** (legora.com), **CoCounsel** (Thomson Reuters). Runs in parallel with the fork scan on launch via `Start Mike.command`
+- Tracks feature announcements from **Harvey** (harvey.ai), **Legora** (legora.com), **CoCounsel** (Thomson Reuters). Runs in parallel with the fork scan on launch via `Start Rose.command`
 - Scanner: `scripts/competitor-scan/scan.mjs`. Register: `scripts/competitor-scan/register.json` (features `C001…`, grouped by capability, vendor tag). Reports: `scripts/competitor-scan/reports/latest.html` + `latest.md`. Log: `last-scan.log`
 - **Two-tier**: (1) node script on every launch fetches vendor blog/release-note index pages, primes a silent baseline on first successful fetch, then flags net-new posts as `status:"new"` ("Needs triage"); (2) weekly Claude scheduled task `competitor-feature-refresh` (Mon 08:00) re-researches with web search, turns raw posts into grouped/summarised feature entries, ages old `new` flags to `seen`
 - First run seeds ~29 curated baseline features (to-date). Report groups by capability (Agents & workflows, Drafting, Research & citations, Document review, Knowledge & playbooks, Voice/multimodal, Mobile/integrations, Analytics/admin, Platform/models); filter by New-only or vendor
-- **Build workflow**: when Peter says "Design and build C005…" → look up the `C0xx` id in `register.json` → design + implement into Mike (Australia) respecting Jade-only/AGPL/AU rules → set that feature's `status` to `"built"` in register
+- **Build workflow**: when Peter says "Design and build C005…" → look up the `C0xx` id in `register.json` → design + implement into Rose respecting Jade-only/AGPL/AU rules → set that feature's `status` to `"built"` in register
 - Force fresh baseline: overwrite register.json with an empty shell (scanCount 0) and re-run
 
 ## Preferences
@@ -99,7 +99,7 @@ npm run dev --prefix frontend  # port 3000
 - **Model registry (P4)** `lib/llm/models.ts` now data-driven (`MODEL_REGISTRY`); `pricing.ts` reads it. **Kimi K3**: provider `moonshot` via `lib/llm/openaiCompat.ts` (chat-completions). Self-host preferred: `KIMI_BASE_URL` (vLLM/SGLang; $0 recorded; `KIMI_MODEL`/`KIMI_INPUT_PRICE`/`KIMI_OUTPUT_PRICE` overrides) → fallback hosted `api.moonshot.ai/v1` (`MOONSHOT_API_KEY` env or user key).
 
 ### Features
-- **Verify (C024)** `lib/verification/assertionCheck.ts` + tool `verify_assertions` + `routes/verify.ts` + `/verify` page. Jade toggle ON → AI content-check; OFF → human self-validation with outbound Jade/AustLII **search links only** (Mike never fetches AustLII); report complete only when all assertions adjudicated.
+- **Verify (C024)** `lib/verification/assertionCheck.ts` + tool `verify_assertions` + `routes/verify.ts` + `/verify` page. Jade toggle ON → AI content-check; OFF → human self-validation with outbound Jade/AustLII **search links only** (Rose never fetches AustLII); report complete only when all assertions adjudicated.
 - **Regwatch (C018)** `lib/regwatch/` (curated official RSS only: FRL, ASIC, ACCC, OAIC, APRA, FWO, NZ legislation) + `routes/regwatch.ts` + `/regwatch` page; 6-hourly timer in index.ts (`REGWATCH_DISABLED=1` to disable).
 - **Tabular v2** typed columns (`type`: date/money/duration/boolean/risk) + per-column `reference_document_id` (C031) in generate pipeline; `PATCH /tabular-review/:id/cells/:doc/:col` manual edit w/ AI-value provenance + edit UI in TRSidePanel (C032); completion notifications; `POST /tabular-review/ask` + TabularAskModal + agent tool `tabular_ask` (C025, `lib/tabularAsk.ts`; doc→text via `lib/extractText.ts`).
 - **Knowledge** `clauses` table + `lib/clauses.ts` + `/clauses` page + tools `save_clause`/`search_clauses` (C026); playbook-builder tools `create_playbook`/`upsert_playbook_rule`/`delete_playbook_rule` + Playbooks "Build with AI" → seeded agent run (C002); org context `app_settings.org_context` (admin UI) + `user_profiles.personal_context` (Account → Features), injected in `runLLMStream` (C033); Admin → Workspace knowledge (C036).
@@ -127,3 +127,11 @@ npm run dev --prefix frontend  # port 3000
 - ✅ "Verify citations" (ShieldCheck) button on assistant messages → creates a Deep-verify report and opens `/verify?report=…`.
 - ✅ `ProjectMembersModal` (roles editor/reviewer/viewer, owner-managed, replaces PeopleModal for projects); PAT management section on Account → API Keys ("MCP access tokens", shown once, copy + revoke).
 - ✅ Boot recovery: `recoverOrphanedRuns()` in executor, called 10s after startup — `running` runs resume (completed steps preserved, in-flight steps reset to pending).
+
+## 2026-07-24 — Legal resources tab + Jade-gating fix
+- **Library → Legal resources** (new tab, `/library/resources`): combines the two former root-level design docs (`australian-legal-sources-map.md`, `citation-verification-gate.md`) plus Regwatch feeds into one list — jurisdiction, title, hyperlink, and a live AI-accessible vs user-only badge. Data: `backend/src/lib/legalResources.ts`. API: `GET /library/legal-resources` (resolves against the live `jade_access_approved` setting), `GET /jade/access-status` (lightweight non-admin boolean, used by the Agents page too). The two root markdown docs are left in place as detailed rationale; the Library tab is now the single combined reference.
+- **Jade-gating fix (real gap, not just labels):** `jade_search_cases`/`jade_search_legislation`/`jade_fetch_document` in `toolDispatcher.ts`, and `jade_validate_citation` in the MCP server (`routes/mcpServer.ts`), were calling Jade.io directly with **no check** of the `jade_access_approved` admin toggle — only the dedicated `verify_citation`/`verify_assertions` tools were gated. All four now check `getJadeAccessApproved()` first and return an AustLII-search-link fallback when Jade access isn't approved.
+- **Agent runtime now Jade-aware end to end:** `agents/types.ts` `ROLE_TOOLSETS` → `roleToolset()`/`roleToolsets(jadeApproved)` (also fixes a dead `jade_validate_citation` reference that had no matching tool schema — replaced with the real gated `verify_citation`). `planner.ts` (`planRun`/`sanitizePlan`) and `rolePrompts.ts` (`buildRolePrompt`) now take/compute `jadeApproved` and change both the tool allowlist and the prompt wording accordingly (Jade.io vs "AustLII manual verification only"). Call sites updated: `routes/agents.ts`, `routes/workflows.ts`, `agents/executor.ts`.
+- **Agents page** (`/agents`): role-reference panel ("What each agent role uses") now fetches live Jade-access status and swaps "Jade.io — …" source chips for "AustLII — manual search link" when access isn't approved, plus a status banner at the top of the panel.
+- **Group member invite/registration status** (Admin → Student groups): `GET /groups/:id` now joins the `invitations` table by email → per-member `invited` + `invited_at` (latest send). Member list shows Registered vs Not-registered, and for unregistered members whether an email invite was sent + date (hidden once registered).
+- **Group invites now sent via Resend, not Supabase's mailer:** `POST /groups/:id/invite` was using `auth.admin.inviteUserByEmail`, which routes through Supabase Auth's built-in email — rate-limited to a few/hour (`429 over_email_send_rate_limit`), so a whole class silently failed (0 auth users created, 0 `invitations` rows). Rewritten to `auth.admin.generateLink` (`invite`, falling back to `magiclink` for already-provisioned emails) to get the action link WITHOUT sending, then deliver a branded email through Resend. New `backend/src/lib/email.ts` (`isEmailConfigured`/`sendEmail`/`escapeHtml`, same transport as notifications). Requires `RESEND_API_KEY` + `NOTIFICATIONS_FROM_EMAIL` on a **Resend-verified domain** (the `onboarding@resend.dev` sender only reaches your own account email). Response shape unchanged (`invited`/`skipped_registered`/`failed`), so the invite UI + invited-date badges work without frontend changes.

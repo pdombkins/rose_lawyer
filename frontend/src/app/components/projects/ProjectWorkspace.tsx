@@ -19,7 +19,7 @@ import {
     listProjectChats,
     listTabularReviews,
     updateProject,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import type {
     Chat,
     ColumnConfig,

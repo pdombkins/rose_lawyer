@@ -2,7 +2,7 @@
 
 /**
  * C077 — Account → Usage: personal consumption metering + soft budget.
- * Every LLM/embedding call Mike makes is costed in AUD (query_costs);
+ * Every LLM/embedding call Rose makes is costed in AUD (query_costs);
  * this page shows monthly spend by feature and model, and lets the user
  * set an optional soft monthly budget (warnings only — nothing is blocked).
  */
@@ -14,7 +14,7 @@ import {
     updateBudget,
     type BudgetStatus,
     type UsageMonth,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import { AccountSection } from "../AccountSection";
 
 /** AccountSection wrapper with the heading/description pattern used on this page. */
@@ -118,7 +118,7 @@ export default function UsagePage() {
         <div className="space-y-6">
             <Section
                 title="Usage this month"
-                description="Every AI call Mike makes is costed in AUD and recorded — assistant chats, tabular reviews, agent runs, embeddings, and exports."
+                description="Every AI call Rose makes is costed in AUD and recorded — assistant chats, tabular reviews, agent runs, embeddings, and exports."
             >
                 {loading ? (
                     <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
@@ -164,7 +164,7 @@ export default function UsagePage() {
 
             <Section
                 title="Soft monthly budget"
-                description="Optional. At 80% you get a notification; at 100% a reminder banner. Mike never blocks requests over budget — this is a teaching aid for cost-aware AI use."
+                description="Optional. At 80% you get a notification; at 100% a reminder banner. Rose never blocks requests over budget — this is a teaching aid for cost-aware AI use."
             >
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500">A$</span>

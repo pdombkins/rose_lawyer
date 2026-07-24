@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Mike (Australia) — Competitor Feature Scanner
+ * Rose — Competitor Feature Scanner
  *
  * Tracks product/feature announcements from legal-AI competitors:
  *   - Harvey        (harvey.ai)
@@ -14,7 +14,7 @@
  *   - Checkbox      (checkbox.ai) — AI legal front door / intake-triage automation for in-house teams
  *   - Litera        (litera.com) — Litera One / Kira / Lito: drafting, contract intelligence, KM
  *
- * Runs in parallel with the GitHub fork scan from `Start Mike.command`.
+ * Runs in parallel with the GitHub fork scan from `Start Rose.command`.
  *
  * Two-tier design (see CLAUDE.md → Competitor Scan):
  *   1. This node script (unattended, on every launch): fetches each vendor's
@@ -169,12 +169,12 @@ const SEED_FEATURES = [
   { vendor: "Harvey", category: "Agents & workflows", date: "2026-07",
     title: "Custom workflows that generate & edit PowerPoint and Excel",
     description: "Turn recurring deliverables (pitch decks, diligence trackers) into repeatable custom workflows that produce and edit PPT/XLSX.",
-    mikeAngle: "Mike already has Excel/PPT support (F005) + workflows — parity/inspiration for output-generating workflows.",
+    mikeAngle: "Rose already has Excel/PPT support (F005) + workflows — parity/inspiration for output-generating workflows.",
     url: "https://www.harvey.ai/blog/the-brief-july-2026" },
   { vendor: "Harvey", category: "Knowledge & playbooks", date: "2026-07",
     title: "Conversational Playbook-building agent",
     description: "Build and refine Playbooks conversationally with an agent in Assistant instead of manually rebuilding content.",
-    mikeAngle: "Directly relevant — Mike just added a Playbooks UI; a conversational builder is a natural next step.",
+    mikeAngle: "Directly relevant — Rose just added a Playbooks UI; a conversational builder is a natural next step.",
     url: "https://www.harvey.ai/blog/the-brief-july-2026" },
   { vendor: "Harvey", category: "Document review & extraction", date: "2026-05",
     title: "Contract Intelligence (contract review product)",
@@ -183,7 +183,7 @@ const SEED_FEATURES = [
   { vendor: "Harvey", category: "Analytics & admin", date: "2026-05",
     title: "Command Center (adoption analytics + peer benchmarking)",
     description: "Adoption-management tool using anonymised, aggregated data from 1,500+ deployments to benchmark usage against peers.",
-    mikeAngle: "Mike has query_costs; an admin analytics/benchmarking view could build on that.",
+    mikeAngle: "Rose has query_costs; an admin analytics/benchmarking view could build on that.",
     url: "https://www.law.com/legaltechnews/2026/05/21/harvey-announces-contract-review-product-adoption-analytics-features/" },
   { vendor: "Harvey", category: "Voice & multimodal", date: "2026-06",
     title: "Audio transcription in Assistant & Vault",
@@ -212,7 +212,7 @@ const SEED_FEATURES = [
   { vendor: "Harvey", category: "Platform & models", date: "2026-06",
     title: "Claude Sonnet 5 in the Model Selector",
     description: "Claude Sonnet 5 selectable across Assistant, Vault, and Workflow Builder.",
-    mikeAngle: "Mike is multi-provider (Claude/Gemini) — model-selector parity is straightforward.",
+    mikeAngle: "Rose is multi-provider (Claude/Gemini) — model-selector parity is straightforward.",
     url: "https://www.harvey.ai/blog/the-brief-june-2026" },
   { vendor: "Harvey", category: "Enablement & other", date: "2026-07",
     title: "Harvey Academy (training)",
@@ -223,7 +223,7 @@ const SEED_FEATURES = [
   { vendor: "Legora", category: "Agents & workflows", date: "2026-05",
     title: "Legora aOS — agentic operating system",
     description: "Orchestrates specialist sub-agents (intake, research, drafting, review) in parallel; handles tool routing, control flow, memory, model selection, guardrails.",
-    mikeAngle: "The 'agentic OS' framing is where the market is heading; Mike's toolDispatcher is a foundation to build multi-agent orchestration on.",
+    mikeAngle: "The 'agentic OS' framing is where the market is heading; Rose's toolDispatcher is a foundation to build multi-agent orchestration on.",
     url: "https://legora.com/product/aos" },
   { vendor: "Legora", category: "Agents & workflows", date: "2025-06",
     title: "Workflows orchestration layer",
@@ -232,12 +232,12 @@ const SEED_FEATURES = [
   { vendor: "Legora", category: "Document review & extraction", date: "2026-01",
     title: "Tabular Review (spreadsheet-style extraction)",
     description: "Drag folders of contracts in; each doc becomes a row, custom prompts become columns; extracts clauses, dates, risk flags.",
-    mikeAngle: "Mike has Tabular Review (F005 lineage) — compare depth of extraction/risk-flagging.",
+    mikeAngle: "Rose has Tabular Review (F005 lineage) — compare depth of extraction/risk-flagging.",
     url: "https://gc.ai/blog/legora-legal-ai-review" },
   { vendor: "Legora", category: "Research & citations", date: "2026-01",
     title: "Research Assistant with inline citations across web + licensed DBs + DMS",
     description: "Natural-language questions searched across open web, licensed legal databases, and the firm's DMS simultaneously; paragraph answers with inline citations.",
-    mikeAngle: "Mirrors Mike's Jade + KB direction; structured citations are a shared priority.",
+    mikeAngle: "Mirrors Rose's Jade + KB direction; structured citations are a shared priority.",
     url: "https://gc.ai/blog/legora-legal-ai-review" },
   { vendor: "Legora", category: "Knowledge & playbooks", date: "2026-01",
     title: "Firm-wide search + structured citations",
@@ -250,7 +250,7 @@ const SEED_FEATURES = [
   { vendor: "Legora", category: "Analytics & admin", date: "2026-05",
     title: "Ethical walls, cross-matter isolation & full audit trails",
     description: "Prevents client info bleeding across matters/users/time; complete visibility into every tool call, file access, and agent action.",
-    mikeAngle: "Relevant to Mike's RLS + query_costs — audit trails and matter isolation for regulated use.",
+    mikeAngle: "Relevant to Rose's RLS + query_costs — audit trails and matter isolation for regulated use.",
     url: "https://legora.com/product/aos" },
 
   // CoCounsel (Thomson Reuters) --------------------------------------------
@@ -265,7 +265,7 @@ const SEED_FEATURES = [
   { vendor: "CoCounsel", category: "Drafting", date: "2026-06",
     title: "Drafting agent from precedent / Practical Law Standard Documents (US)",
     description: "Upload source material + key details → analyses a trusted precedent/Standard Document and produces a tailored multi-page first draft with the template's structure and style.",
-    mikeAngle: "Precedent-driven drafting pairs naturally with Mike's Library + Playbooks.",
+    mikeAngle: "Precedent-driven drafting pairs naturally with Rose's Library + Playbooks.",
     url: "https://legal.thomsonreuters.com/blog/behind-the-build-of-the-next-generation-of-cocounsel-legal/" },
   { vendor: "CoCounsel", category: "Research & citations", date: "2026-06",
     title: "Deep Research across Westlaw & Practical Law",
@@ -274,7 +274,7 @@ const SEED_FEATURES = [
   { vendor: "CoCounsel", category: "Research & citations", date: "2026-06",
     title: "Deep Research Verify (citation-support checking)",
     description: "Automatically checks whether cited authority supports the assertions made; validates Westlaw/Practical Law sources, highlights supporting passages, flags misattributions/mischaracterisations.",
-    mikeAngle: "Very close to Mike's citation-verification gate — a strong model for extending Jade/AGLC verification to assertion-level checking.",
+    mikeAngle: "Very close to Rose's citation-verification gate — a strong model for extending Jade/AGLC verification to assertion-level checking.",
     url: "https://www.thomsonreuters.com/en-us/posts/innovation/cocounsel-legal-june-2026-releases/" },
   { vendor: "CoCounsel", category: "Document review & extraction", date: "2026-06",
     title: "Tabular Analysis (one question across many documents)",
@@ -283,7 +283,7 @@ const SEED_FEATURES = [
   { vendor: "CoCounsel", category: "Knowledge & playbooks", date: "2026-06",
     title: "My Clauses — personal preferred-provision library (US)",
     description: "Transactional lawyers build a personal, searchable library of preferred contract provisions.",
-    mikeAngle: "Overlaps Mike's Library/Playbooks — a 'preferred clauses' store is a concrete near-term feature.",
+    mikeAngle: "Overlaps Rose's Library/Playbooks — a 'preferred clauses' store is a concrete near-term feature.",
     url: "https://www.thomsonreuters.com/en-us/posts/innovation/cocounsel-legal-june-2026-releases/" },
   { vendor: "CoCounsel", category: "Knowledge & playbooks", date: "2026-06",
     title: "Organizational intelligence",
@@ -292,7 +292,7 @@ const SEED_FEATURES = [
   { vendor: "CoCounsel", category: "Platform & models", date: "2026-01",
     title: "Expansion to the UK (AU planned)",
     description: "CoCounsel Legal expanded to the UK with agentic AI; Australia among planned rollouts.",
-    mikeAngle: "AU rollout is direct competitive context for Mike (Australia).",
+    mikeAngle: "AU rollout is direct competitive context for Rose.",
     url: "https://www.thomsonreuters.com/en/press-releases/2026/january/thomson-reuters-expands-cocounsel-legal-to-uk-continuing-its-transformation-of-legal-work-with-agentic-ai-innovation" },
   { vendor: "CoCounsel", category: "Platform & models", date: "2026-06",
     title: "Thomson Reuters building its own LLM",
@@ -307,7 +307,7 @@ const SEED_FEATURES = [
   { vendor: "Eudia", category: "Document review & extraction", date: "2026-06",
     title: "Contract review, redlining & drafting in Eudia",
     description: "Fast, accurate contracting workflow built for scale within the unified Eudia workspace.",
-    mikeAngle: "Directly comparable to Mike's tabular review + drafting — worth benchmarking depth of redlining.",
+    mikeAngle: "Directly comparable to Rose's tabular review + drafting — worth benchmarking depth of redlining.",
     url: "https://www.eudia.com/blog/contract-review-redlining-drafting-in-eudia" },
   { vendor: "Eudia", category: "Document review & extraction", date: "2026-05",
     title: "Patent Review",
@@ -316,7 +316,7 @@ const SEED_FEATURES = [
   { vendor: "Eudia", category: "Research & citations", date: "2026-05",
     title: "Authoritative Legal Sources integration",
     description: "Grounds outputs in licensed/authoritative legal databases rather than open web only.",
-    mikeAngle: "Same problem Mike solves via Jade/AustLII — compare sourcing model.",
+    mikeAngle: "Same problem Rose solves via Jade/AustLII — compare sourcing model.",
     url: "https://www.eudia.com/blog/eudia-launches-legal-databases-integration" },
   { vendor: "Eudia", category: "Platform & models", date: "2026-05",
     title: "Unified Workspace for Enterprise Legal Teams",
@@ -327,7 +327,7 @@ const SEED_FEATURES = [
   { vendor: "Hebbia", category: "Knowledge & playbooks", date: "2026-04",
     title: "Hebbia Skills — expertise at institutional scale",
     description: "Turns institutional knowledge (incl. legal) into scalable, reusable instructions across a firm.",
-    mikeAngle: "Comparable framing to Mike's playbooks — Hebbia positions this cross-industry, not legal-only.",
+    mikeAngle: "Comparable framing to Rose's playbooks — Hebbia positions this cross-industry, not legal-only.",
     url: "https://www.hebbia.com/blog/hebbia-skills-expertise-at-institutional-scale" },
   { vendor: "Hebbia", category: "Agents & workflows", date: "2026-04",
     title: "Introducing Projects",
@@ -336,7 +336,7 @@ const SEED_FEATURES = [
   { vendor: "Hebbia", category: "Document review & extraction", date: "2026-06",
     title: "Matrix workflow upgrades (monthly Disclosure releases)",
     description: "Matrix (structured multi-step questions run across thousands of documents in one pass) gets recurring monthly capability upgrades.",
-    mikeAngle: "Matrix's bulk-question-across-documents model is close to Mike's tabular review/ask.",
+    mikeAngle: "Matrix's bulk-question-across-documents model is close to Rose's tabular review/ask.",
     url: "https://www.hebbia.com/blog/whats-new-june-disclosure-2026" },
   { vendor: "Hebbia", category: "Mobile & integrations", date: "2026-07",
     title: "Every Data Integration, One View",
@@ -347,7 +347,7 @@ const SEED_FEATURES = [
   { vendor: "vLex", category: "Agents & workflows", date: "2026-01",
     title: "Vincent Studio — no-code AI workflow builder",
     description: "Enterprise/large-firm feature to codify firm expertise (contract playbooks, due-diligence frameworks) into governed, no-code AI workflows.",
-    mikeAngle: "Same territory as Mike's playbook-builder tools + agent runtime.",
+    mikeAngle: "Same territory as Rose's playbook-builder tools + agent runtime.",
     url: "https://vlex.com/news/introducing-vincent-studio" },
   { vendor: "vLex", category: "Research & citations", date: "2025-11",
     title: "Vector-search research across 1B+ legal documents",
@@ -356,7 +356,7 @@ const SEED_FEATURES = [
   { vendor: "vLex", category: "Analytics & admin", date: "2025-10",
     title: "Zero Data Retention (ZDR) agreements",
     description: "Explicit ZDR handling for privileged client communications passed to foundation models.",
-    mikeAngle: "Worth cross-checking Mike's provider data-handling docs for AU firms with similar privilege concerns.",
+    mikeAngle: "Worth cross-checking Rose's provider data-handling docs for AU firms with similar privilege concerns.",
     url: "https://vlex.com/news/How-It-Works-Zero-Data-Retention" },
   { vendor: "vLex", category: "Platform & models", date: "2025-11",
     title: "Clio acquires vLex ($1B) — Intelligent Legal Work Platform",
@@ -382,7 +382,7 @@ const SEED_FEATURES = [
   { vendor: "Neota Logic", category: "Agents & workflows", date: "2026-01",
     title: "Governed AI orchestration",
     description: "LLMs used for unstructured tasks (extraction, drafting) while a rule-based, auditable orchestration layer governs final decision logic.",
-    mikeAngle: "A stricter governance model than Mike's current agent runtime — relevant if regulated/enterprise AU clients need deterministic guardrails.",
+    mikeAngle: "A stricter governance model than Rose's current agent runtime — relevant if regulated/enterprise AU clients need deterministic guardrails.",
     url: "https://neota.com/why-legal-ops-must-pivot-to-governed-ai-orchestration/" },
   { vendor: "Neota Logic", category: "Mobile & integrations", date: "2025-08",
     title: "Design Build Legal (DBL) partnership",
@@ -393,7 +393,7 @@ const SEED_FEATURES = [
   { vendor: "Checkbox", category: "Agents & workflows", date: "2026",
     title: "AI Legal Front Door",
     description: "AI-powered intake/triage layer integrated into Slack, Teams, Salesforce etc.; understands, categorises, and routes incoming legal requests automatically.",
-    mikeAngle: "In-house intake/triage is outside Mike's current scope but relevant if Mike expands beyond firm/matter workflows.",
+    mikeAngle: "In-house intake/triage is outside Rose's current scope but relevant if Rose expands beyond firm/matter workflows.",
     url: "https://www.checkbox.ai/legal-ai/ai-legal-intake-triage" },
   { vendor: "Checkbox", category: "Knowledge & playbooks", date: "2026",
     title: "AI Legal Chatbot trained on org policies & playbooks",
@@ -408,12 +408,12 @@ const SEED_FEATURES = [
   { vendor: "Litera", category: "Platform & models", date: "2026-07",
     title: "Litera relaunches as Litera One — unified practice + business of law AI agent",
     description: "Company-wide relaunch unifying drafting, KM, contract intelligence and back-office tools behind a single AI agent (Lito).",
-    mikeAngle: "Signals the market consolidating around one agent per vendor rather than point tools — relevant to how Mike frames its own agent runtime.",
+    mikeAngle: "Signals the market consolidating around one agent per vendor rather than point tools — relevant to how Rose frames its own agent runtime.",
     url: "https://www.litera.com/newslinks/litera-relaunches-unite-practice-and-business-law" },
   { vendor: "Litera", category: "Document review & extraction", date: "2026",
     title: "Kira Grid Chat — cross-document Q&A for contract review",
     description: "Natural-language Q&A across the Kira Analysis Grid, answering questions that span many reviewed documents at once.",
-    mikeAngle: "Directly comparable to Mike's tabular_ask feature.",
+    mikeAngle: "Directly comparable to Rose's tabular_ask feature.",
     url: "https://www.litera.com/blog/kira-grid-chat-cross-document-due-diligence" },
   { vendor: "Litera", category: "Document review & extraction", date: "2026-01",
     title: "Kira hybrid GenAI + proprietary AI contract review",
@@ -426,7 +426,7 @@ const SEED_FEATURES = [
   { vendor: "Litera", category: "Platform & models", date: "2026",
     title: "Claude Sonnet 5, Claude Fable 5 & GPT-5.6 live in Lito",
     description: "Multi-frontier-model support added to Lito, Litera's legal AI agent.",
-    mikeAngle: "Mike is already multi-provider (Claude/Gemini/Kimi) — parity point on model breadth.",
+    mikeAngle: "Rose is already multi-provider (Claude/Gemini/Kimi) — parity point on model breadth.",
     url: "https://www.litera.com/blog/claude-sonnet-5-fable-5-gpt-5-6-in-lito" },
 ];
 
@@ -468,7 +468,7 @@ const scanNotes = [];
 async function fetchText(url) {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; mike-competitor-scan/1)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; rose-competitor-scan/1)" },
       redirect: "follow",
     });
     if (!res.ok) return null;
@@ -553,11 +553,11 @@ function writeReports() {
     for (const f of byCat[cat]) {
       md += `- **${f.id}** [${f.vendor}] ${esc(f.title)}${f.status === "new" ? " _(new)_" : ""} — ${f.date} — [source](${f.url})\n`;
       if (f.description) md += `  - ${esc(f.description)}\n`;
-      if (f.mikeAngle) md += `  - _Mike angle:_ ${esc(f.mikeAngle)}\n`;
+      if (f.mikeAngle) md += `  - _Rose angle:_ ${esc(f.mikeAngle)}\n`;
     }
     md += `\n`;
   }
-  md += `\n---\nTo build features into Mike (Australia), tell Claude e.g.: *"Design and build C005 and C023 from the competitor scan."*\n`;
+  md += `\n---\nTo build features into Rose, tell Claude e.g.: *"Design and build C005 and C023 from the competitor scan."*\n`;
   writeFileSync(join(REPORTS, "latest.md"), md);
 
   // HTML
@@ -574,7 +574,7 @@ function writeReports() {
           ${f.status === "new" ? '<span class="newbadge">NEW</span>' : ""}
         </span>
         ${f.description ? `<span class="desc">${esc(f.description)}</span>` : ""}
-        ${f.mikeAngle ? `<span class="angle">Mike angle: ${esc(f.mikeAngle)}</span>` : ""}
+        ${f.mikeAngle ? `<span class="angle">Rose angle: ${esc(f.mikeAngle)}</span>` : ""}
         <span class="meta">${f.date} · <a href="${f.url}" target="_blank" rel="noopener">source ↗</a></span>
       </span>
     </label>`).join("")}`).join("");
@@ -608,7 +608,7 @@ function writeReports() {
 <h1>Competitor Feature Scan <small style="color:#888;font-weight:400">${date}</small></h1>
 <div class="summary">
   ${firstRun ? "<b>First scan</b> — full baseline of features to-date." : `<b>${feats.length}</b> features tracked · <b>${newCount}</b> flagged new since the last scan.`}
-  Tracking ${ALL_VENDORS.map((v) => `<b>${esc(v)}</b>`).join(", ")}. Tick features, then <b>Copy request</b> and paste to Claude to design &amp; build them into Mike (Australia).
+  Tracking ${ALL_VENDORS.map((v) => `<b>${esc(v)}</b>`).join(", ")}. Tick features, then <b>Copy request</b> and paste to Claude to design &amp; build them into Rose.
 </div>
 ${scanNotes.map((n) => `<div class="note">⚠️ ${esc(n)}</div>`).join("")}
 <div class="controls">
@@ -640,7 +640,7 @@ function refresh(){
   const bar=document.getElementById('bar');
   bar.style.display=ids.length?'flex':'none';
   document.getElementById('sel').textContent=ids.length+' selected:';
-  document.getElementById('cmd').textContent='Design and build '+ids.join(', ')+' from the competitor scan into Mike (Australia).';
+  document.getElementById('cmd').textContent='Design and build '+ids.join(', ')+' from the competitor scan into Rose.';
 }
 document.addEventListener('change',refresh);
 function copyCmd(){navigator.clipboard.writeText(document.getElementById('cmd').textContent).then(()=>{

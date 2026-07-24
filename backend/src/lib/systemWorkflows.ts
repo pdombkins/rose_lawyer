@@ -40,7 +40,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -111,7 +111,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -247,7 +247,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -274,7 +274,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -422,7 +422,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -449,7 +449,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -476,7 +476,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -503,7 +503,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -657,7 +657,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -684,7 +684,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -711,7 +711,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -738,7 +738,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -808,7 +808,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -835,7 +835,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -963,7 +963,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -990,7 +990,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1017,7 +1017,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1165,7 +1165,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1192,7 +1192,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1278,7 +1278,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1305,7 +1305,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "assistant",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1332,7 +1332,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1480,7 +1480,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"
@@ -1586,7 +1586,7 @@ export const SYSTEM_WORKFLOWS: SystemWorkflow[] = [
             "type": "tabular",
             "contributors": [
                 {
-                    "name": "Mike",
+                    "name": "Rose",
                     "organisation": "Open Legal Products",
                     "role": null,
                     "linkedin": "https://www.linkedin.com/company/mike-oss/"

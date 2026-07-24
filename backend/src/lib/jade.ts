@@ -18,9 +18,9 @@ const JADE_BASE = "https://jade.io";
 const JADE_TIMEOUT_MS = 12_000;
 const JADE_MAX_RESULTS = 20;
 const JADE_USER_AGENT =
-  "Mike-Legal-Assistant/1.0 (research and educational use; contact: " +
+  "Rose-Legal-Assistant/1.0 (research and educational use; contact: " +
   (process.env.ADMIN_EMAIL ?? "admin@example.com") +
-  "; respectful-bot; https://mikeoss.com)";
+  "; respectful-bot; https://rose.lawyer)";
 
 /** Neutral citation pattern — e.g. [2024] HCA 26 */
 const NEUTRAL_CITATION_RE = /\[(\d{4})\]\s*([A-Za-z0-9]+)\s*(\d+)/;

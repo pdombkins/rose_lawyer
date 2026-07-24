@@ -1,7 +1,10 @@
--- Mike Supabase schema
--- Use this for a fresh Supabase database. Existing deployments should instead
--- apply the dated incremental migration files in backend/migrations that are
--- newer than the version of Mike they currently have deployed.
+-- Rose Supabase schema
+-- Use this for a fresh Supabase database. This snapshot is current as of
+-- 2026-07-19; apply every dated migration in backend/migrations/ from
+-- 20260721_01_agent_runtime.sql onward afterwards to reach the current shape.
+-- Existing deployments should instead apply the dated incremental migration
+-- files in backend/migrations that are newer than the version of Rose they
+-- currently have deployed.
 
 create extension if not exists "pgcrypto";
 

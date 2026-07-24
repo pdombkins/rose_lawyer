@@ -7,7 +7,7 @@ import { ModalFieldLabel } from "@/app/components/modals/ModalFieldLabel";
 import { ModalTextInput } from "@/app/components/modals/ModalTextInput";
 import type { Project } from "@/app/components/shared/types";
 import { ProjectPracticeField } from "./ProjectPracticeField";
-import { getProjectUsage } from "@/app/lib/mikeApi";
+import { getProjectUsage } from "@/app/lib/roseApi";
 
 interface ProjectDetailsModalProps {
     open: boolean;

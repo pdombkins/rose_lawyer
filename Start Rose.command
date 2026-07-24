@@ -1,6 +1,6 @@
 #!/bin/bash
-# Mike OSS Launcher
-# Double-click this file in Finder to start Mike OSS
+# Rose Launcher
+# Double-click this file in Finder to start Rose
 
 # Source nvm so npm is available
 export NVM_DIR="$HOME/.nvm"
@@ -8,25 +8,25 @@ export NVM_DIR="$HOME/.nvm"
 
 MIKE_DIR="$HOME/mike-OSS"
 
-echo "Starting Mike OSS..."
+echo "Starting Rose..."
 echo ""
 
 # Start backend in a new Terminal tab
 osascript <<EOF
 tell application "Terminal"
     activate
-    set backendTab to do script "export NVM_DIR=\"\$HOME/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && \\\\. \"\$NVM_DIR/nvm.sh\" && cd '$MIKE_DIR/backend' && echo '=== Mike Backend ===' && npm run dev"
+    set backendTab to do script "export NVM_DIR=\"\$HOME/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && \\\\. \"\$NVM_DIR/nvm.sh\" && cd '$MIKE_DIR/backend' && echo '=== Rose Backend ===' && npm run dev"
     delay 0.5
     tell application "System Events" to keystroke "t" using command down
     delay 0.5
-    do script "export NVM_DIR=\"\$HOME/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && \\\\. \"\$NVM_DIR/nvm.sh\" && cd '$MIKE_DIR/frontend' && echo '=== Mike Frontend ===' && npm run dev" in front window
+    do script "export NVM_DIR=\"\$HOME/.nvm\" && [ -s \"\$NVM_DIR/nvm.sh\" ] && \\\\. \"\$NVM_DIR/nvm.sh\" && cd '$MIKE_DIR/frontend' && echo '=== Rose Frontend ===' && npm run dev" in front window
 end tell
 EOF
 
 echo "Waiting for servers to start..."
 sleep 6
 
-echo "Opening Mike in browser..."
+echo "Opening Rose in browser..."
 open http://localhost:3000
 
 # Scan Mike OSS upstream + forks for new features (runs in background).
@@ -40,7 +40,7 @@ echo "Scanning competitors for new features (background)..."
 (node "$MIKE_DIR/scripts/competitor-scan/scan.mjs" --open-if-new > "$MIKE_DIR/scripts/competitor-scan/last-scan.log" 2>&1 &)
 
 echo ""
-echo "Mike OSS is running!"
+echo "Rose is running!"
 echo "  Backend:  http://localhost:3001"
 echo "  Frontend: http://localhost:3000"
 echo ""

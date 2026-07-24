@@ -1,5 +1,5 @@
 /**
- * Playbooks for Mike Legal AI — encoded standard negotiating positions per
+ * Playbooks for Rose Legal AI — encoded standard negotiating positions per
  * agreement type. The review tool fetches a playbook's rules and hands them
  * to the model to flag deviations clause-by-clause.
  */

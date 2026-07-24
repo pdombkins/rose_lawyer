@@ -1,11 +1,12 @@
-# Glossary — Mike (Australia)
+# Glossary — Rose
 
 ## Platform
 | Term | Meaning |
 |------|---------|
-| Mike | The platform — Australian fork of Mike OSS |
+| Rose | The platform — Australian fork of Mike OSS |
 | Mike OSS | Open-source legal AI assistant base |
-| mikeoss.com | Production website |
+| rose.lawyer | Primary live URL (custom domain on the rose-lawyer Cloudflare Worker; DNS migrated from Sav to Cloudflare) |
+| rose-lawyer.pdombkins.workers.dev | Underlying Workers.dev URL (fallback, always works even if the custom domain has issues) |
 | pdombkins/mikeOSS_Australia | GitHub repo |
 
 ## Legal Research

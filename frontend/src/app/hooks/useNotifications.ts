@@ -5,7 +5,7 @@ import {
     getNotifications,
     markNotificationsRead,
     type AppNotification,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 
 const POLL_MS = 60_000;
 

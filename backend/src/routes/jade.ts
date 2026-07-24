@@ -7,7 +7,7 @@
  * ⚠️  RESEARCH & EDUCATIONAL USE ONLY. Jade.io requires prior written
  * permission for automated access — obtain it before enabling in a deployment.
  *
- * All routes require authentication via the standard Mike requireAuth middleware.
+ * All routes require authentication via the standard Rose requireAuth middleware.
  */
 
 import { Router } from "express";
@@ -20,9 +20,21 @@ import {
   formatAGLC4Citation,
   type Jurisdiction,
 } from "../lib/jade";
+import { getJadeAccessApproved } from "../lib/appSettings";
 
 export const jadeRouter = Router();
 jadeRouter.use(requireAuth);
+
+// ── GET /jade/access-status ───────────────────────────────────────────────────
+// Lightweight, non-admin-gated check so any authenticated user (e.g. the
+// Agents page) can tell whether Jade.io tools are actually usable right now,
+// or whether Rose is currently falling back to AustLII manual verification
+// only. The admin-only toggle itself lives at GET/PUT /admin/settings.
+
+jadeRouter.get("/access-status", async (_req, res) => {
+  const jadeAccessApproved = await getJadeAccessApproved();
+  res.json({ jadeAccessApproved });
+});
 
 const isDev = process.env.NODE_ENV !== "production";
 const devLog = (...args: Parameters<typeof console.log>) => {

@@ -1,5 +1,5 @@
 /**
- * C007 — Personal access token management for the Mike MCP server.
+ * C007 — Personal access token management for the Rose MCP server.
  * Tokens are shown once at creation; only sha256 hashes are stored.
  */
 import crypto from "crypto";
@@ -27,7 +27,7 @@ patsRouter.post("/", requireAuth, async (req, res) => {
     typeof req.body?.name === "string" && req.body.name.trim()
       ? req.body.name.trim().slice(0, 100)
       : "MCP token";
-  const token = `mike_pat_${crypto.randomBytes(24).toString("hex")}`;
+  const token = `rose_pat_${crypto.randomBytes(24).toString("hex")}`;
   const { data, error } = await db
     .from("user_pats")
     .insert({

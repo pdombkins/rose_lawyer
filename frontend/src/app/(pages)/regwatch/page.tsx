@@ -27,7 +27,7 @@ import {
     type RegEvent,
     type RegSource,
     type RegWatch,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 
 function timeAgo(iso: string | null): string {
     if (!iso) return "";

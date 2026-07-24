@@ -5,7 +5,7 @@ import {
     getLibrary,
     getProject,
     listProjects,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import type { Document, LibraryFolder, Project } from "./types";
 
 export type DirectoryTab = "files" | "templates" | "projects";

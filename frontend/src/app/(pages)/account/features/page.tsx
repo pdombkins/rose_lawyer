@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useUserProfile } from "@/app/contexts/UserProfileContext";
-import { updateUserProfile } from "@/app/lib/mikeApi";
+import { updateUserProfile } from "@/app/lib/roseApi";
 import { useQuickActionsPreference } from "@/app/components/assistant/quickActionsPreferences";
 import { AccountSection } from "../AccountSection";
 import { AccountToggle } from "../AccountToggle";
@@ -180,7 +180,7 @@ export default function FeaturesPage() {
                     <div className="px-4 py-5">
                         <p className="mb-2 text-sm text-gray-500">
                             Notes about you, your organisation and your standard
-                            positions. Mike applies this context to drafting,
+                            positions. Rose applies this context to drafting,
                             reviews and redlines.
                         </p>
                         <textarea

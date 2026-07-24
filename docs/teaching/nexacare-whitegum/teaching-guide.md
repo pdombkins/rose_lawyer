@@ -1,10 +1,10 @@
-# Instructor Guide — NexaCare/Whitegum on Mike (Australia)
+# Instructor Guide — NexaCare/Whitegum on Rose
 
 *For research and educational purposes only. Companion to `prompt-library.md` and the seed package in `seed/`.*
 
 ## What this package contains
 
-| Component | Where | Mike feature exercised |
+| Component | Where | Rose feature exercised |
 |---|---|---|
 | Matter, org context, list items | `seed/nexacare_seed.sql` | Projects, workspace context injection, Lists (tasks/facts/deadlines) |
 | 3 playbooks × 6 rules | `seed/nexacare_seed.sql` | Playbooks, `review_against_playbook` |
@@ -37,7 +37,7 @@ The source documents contain **planted deviations** so that correct AI output is
 
 ## Suggested week-by-week mapping (aligned to the WBS phases)
 
-**Week 1 — Scoping.** Students explore the seeded project, org context, playbooks and matter list. Exercise: partner pre-brief prompt (James's prompt 1); discuss how workspace context changes Mike's answers (ask the same question with and without a project selected).
+**Week 1 — Scoping.** Students explore the seeded project, org context, playbooks and matter list. Exercise: partner pre-brief prompt (James's prompt 1); discuss how workspace context changes Rose's answers (ask the same question with and without a project selected).
 
 **Week 2 — The EHR crisis (core week).** The emails scenario. Aisha-track students do the manual clause-mapping prompt, then run the seeded agent workflow and critique the difference. Assessment artefact: the one-pager, with the demands-vs-contract table marked against the answer key above. Teaching moments: the approval gate as supervision; role tool allowlists (why can't the drafting step search Jade?); estimated vs actual token cost on the run.
 
@@ -45,7 +45,7 @@ The source documents contain **planted deviations** so that correct AI output is
 
 **Week 4 — Documentation & negotiation.** Clause library work: adapt the CP clauses, draft the MediTrax interim licence variation, redline the TSA against the playbook. Exports (DOCX/PDF, AGLC4 restyle). Discussion: when is a playbook a crutch?
 
-**Week 5 — Completion & governance.** Lists as CP tracker; audit log review (chain of custody for AI outputs); usage/budget vs fixed-fee milestones; Regwatch triage; the 'Stop the Line' memo (Priya's prompt 6). Capstone discussion: what would you need to see before letting Mike's output go to a client unreviewed — and is the answer "nothing suffices"?
+**Week 5 — Completion & governance.** Lists as CP tracker; audit log review (chain of custody for AI outputs); usage/budget vs fixed-fee milestones; Regwatch triage; the 'Stop the Line' memo (Priya's prompt 6). Capstone discussion: what would you need to see before letting Rose's output go to a client unreviewed — and is the answer "nothing suffices"?
 
 ## Learning objectives this package supports
 

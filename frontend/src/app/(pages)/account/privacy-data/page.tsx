@@ -17,7 +17,7 @@ import {
     exportChatData,
     exportTabularReviewsData,
     isMfaRequiredError,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import {
     accountGlassDangerOutlineButtonClassName,
     accountGlassPrimaryButtonClassName,

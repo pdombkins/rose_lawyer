@@ -28,13 +28,16 @@ import {
     adminUpdateSettings,
     adminGetProjectContexts,
     adminSetProjectContext,
+    adminGetEmailStatus,
+    adminSendTestEmail,
     type AdminUser,
     type AdminInvitation,
     type AdminCostTotals,
     type AdminCostLineItem,
     type AdminProjectContext,
-    MikeApiError,
-} from "@/app/lib/mikeApi";
+    type AdminEmailStatus,
+    RoseApiError,
+} from "@/app/lib/roseApi";
 
 function formatDate(iso: string | null | undefined): string {
     if (!iso) return "—";
@@ -83,6 +86,14 @@ export default function AdminPage() {
     const [showCostDetails, setShowCostDetails] = useState(false);
     const [loadingCosts, setLoadingCosts] = useState(false);
 
+    const [emailStatus, setEmailStatus] = useState<AdminEmailStatus | null>(null);
+    const [testEmailTo, setTestEmailTo] = useState("");
+    const [sendingTestEmail, setSendingTestEmail] = useState(false);
+    const [testEmailResult, setTestEmailResult] = useState<{
+        type: "success" | "error";
+        message: string;
+    } | null>(null);
+
     const [jadeApproved, setJadeApproved] = useState<boolean | null>(null);
     const [orgContext, setOrgContext] = useState("");
     const [orgContextSaving, setOrgContextSaving] = useState(false);
@@ -108,12 +119,13 @@ export default function AdminPage() {
     const loadData = useCallback(async () => {
         setLoadingData(true);
         try {
-            const [usersData, invitationsData, settingsData, projectCtx] =
+            const [usersData, invitationsData, settingsData, projectCtx, emailStatusData] =
                 await Promise.all([
                     adminListUsers(),
                     adminListInvitations(),
                     adminGetSettings(),
                     adminGetProjectContexts().catch(() => []),
+                    adminGetEmailStatus().catch(() => null),
                 ]);
             setUsers(usersData);
             setInvitations(invitationsData);
@@ -122,6 +134,7 @@ export default function AdminPage() {
                 (settingsData as { orgContext?: string }).orgContext ?? "",
             );
             setProjectContexts(projectCtx);
+            setEmailStatus(emailStatusData);
         } catch {
             // swallow — errors shown inline
         } finally {
@@ -168,7 +181,7 @@ export default function AdminPage() {
             setInvitations(updated);
         } catch (err) {
             const msg =
-                err instanceof MikeApiError
+                err instanceof RoseApiError
                     ? err.message
                     : "Failed to send invitation. Please try again.";
             setInviteStatus({ type: "error", message: msg });
@@ -185,7 +198,7 @@ export default function AdminPage() {
             setUsers((prev) => prev.filter((u) => u.id !== user.id));
         } catch (err) {
             const msg =
-                err instanceof MikeApiError ? err.message : "Failed to remove user.";
+                err instanceof RoseApiError ? err.message : "Failed to remove user.";
             alert(msg);
         } finally {
             setRemovingId(null);
@@ -204,6 +217,27 @@ export default function AdminPage() {
             setJadeApproved(previous); // revert on failure
         } finally {
             setSavingJade(false);
+        }
+    };
+
+    const handleSendTestEmail = async () => {
+        if (sendingTestEmail) return;
+        setSendingTestEmail(true);
+        setTestEmailResult(null);
+        try {
+            const res = await adminSendTestEmail(testEmailTo.trim() || undefined);
+            setTestEmailResult({
+                type: "success",
+                message: `Sent to ${res.to}. Check that inbox (and spam folder) to confirm delivery.`,
+            });
+        } catch (err) {
+            const msg =
+                err instanceof RoseApiError
+                    ? err.message
+                    : "Failed to send test email.";
+            setTestEmailResult({ type: "error", message: msg });
+        } finally {
+            setSendingTestEmail(false);
         }
     };
 
@@ -425,6 +459,60 @@ export default function AdminPage() {
                             ? "Citations are verified automatically via Jade.io, falling back to human verification on AustLII only if Jade.io fails."
                             : "Default: citations are verified by you on AustLII (opens in a new tab for you to search). No automated Jade.io access is used."}
                     </p>
+                </div>
+
+                {/* Email transport — Resend configuration + live test send */}
+                <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <h2 className="text-sm font-semibold text-gray-900">
+                            Email delivery
+                        </h2>
+                    </div>
+                    {emailStatus ? (
+                        <p className="text-sm text-gray-700">
+                            {emailStatus.configured ? (
+                                <>
+                                    Resend is configured. Sending as{" "}
+                                    <span className="font-medium">
+                                        {emailStatus.fromAddress}
+                                    </span>
+                                    .
+                                </>
+                            ) : (
+                                "Resend is not configured — set RESEND_API_KEY in backend/.env to enable group invitations and notifications."
+                            )}
+                        </p>
+                    ) : (
+                        <p className="text-sm text-gray-500">Loading…</p>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <input
+                            type="email"
+                            value={testEmailTo}
+                            onChange={(e) => setTestEmailTo(e.target.value)}
+                            placeholder="you@example.com (defaults to your own email)"
+                            className="w-72 max-w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-400"
+                        />
+                        <button
+                            onClick={() => void handleSendTestEmail()}
+                            disabled={sendingTestEmail || !emailStatus?.configured}
+                            className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+                        >
+                            {sendingTestEmail ? "Sending…" : "Send test email"}
+                        </button>
+                    </div>
+                    {testEmailResult && (
+                        <p
+                            className={`mt-2 text-xs ${
+                                testEmailResult.type === "success"
+                                    ? "text-green-700"
+                                    : "text-red-600"
+                            }`}
+                        >
+                            {testEmailResult.message}
+                        </p>
+                    )}
                 </div>
 
                 {/* Invite section */}

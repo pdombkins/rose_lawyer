@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MikeIcon } from "@/app/components/chat/mike-icon";
+import { RoseIcon } from "@/app/components/chat/rose-icon";
 
 interface SiteLogoProps {
     size?: "sm" | "md" | "lg" | "xl";
@@ -18,7 +18,7 @@ export function SiteLogo({
 }: SiteLogoProps) {
     const landingHref =
         process.env.NODE_ENV === "production"
-            ? "https://mikeoss.com"
+            ? "https://rose.lawyer"
             : "http://localhost:3000";
     const sizeClasses = {
         sm: "text-xl",
@@ -43,9 +43,9 @@ export function SiteLogo({
             <span
                 className={`inline-flex shrink-0 items-center leading-none ${iconClassName}`}
             >
-                <MikeIcon size={iconSizes[size]} />
+                <RoseIcon size={iconSizes[size]} />
             </span>
-            <span>Mike (Australia)</span>
+            <span>Rose</span>
         </h1>
     );
 

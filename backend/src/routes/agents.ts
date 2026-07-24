@@ -15,15 +15,20 @@ import { can } from "../lib/rbac";
 import { getUserApiKeys } from "../lib/userApiKeys";
 import { resolveModel, DEFAULT_MAIN_MODEL } from "../lib/llm";
 import { planRun, sanitizePlan } from "../lib/agents/planner";
-import { planNeedsApproval, ROLE_TOOLSETS } from "../lib/agents/types";
+import { planNeedsApproval, roleToolsets } from "../lib/agents/types";
 import type { AgentPlan } from "../lib/agents/types";
 import { executeRunInBackground } from "../lib/agents/executor";
 import { subscribeRun } from "../lib/agents/events";
+import { getJadeAccessApproved } from "../lib/appSettings";
 
 export const agentsRouter = Router();
 
 /** C022 — fixed 3-step plan for precedent-driven drafting. */
-function buildDraftFromPrecedentPlan(request: string): AgentPlan {
+function buildDraftFromPrecedentPlan(
+  request: string,
+  jadeApproved: boolean,
+): AgentPlan {
+  const toolsets = roleToolsets(jadeApproved);
   return {
     title: "Draft from precedent",
     steps: [
@@ -32,21 +37,21 @@ function buildDraftFromPrecedentPlan(request: string): AgentPlan {
         depends_on: [],
         role: "intake",
         instruction: `Read the attached precedent document and produce a structural analysis: document type, parties/roles, section-by-section skeleton, defined terms, style conventions (numbering, headings, boilerplate) and jurisdiction markers. Also summarise the matter details from this request: ${request}`,
-        tool_allowlist: ROLE_TOOLSETS.intake,
+        tool_allowlist: toolsets.intake,
       },
       {
         position: 2,
         depends_on: [1],
         role: "drafting",
         instruction: `Using the precedent's structure and style from step 1 and the matter details in the run request, produce a tailored multi-page first draft as a Word document (generate_docx). Reuse preferred clauses (search_clauses) and any relevant playbook positions where they fit. Follow Australian drafting conventions and AGLC4 for any citations.`,
-        tool_allowlist: ROLE_TOOLSETS.drafting,
+        tool_allowlist: toolsets.drafting,
       },
       {
         position: 3,
         depends_on: [2],
         role: "review",
         instruction: `Review the generated draft against the relevant playbook (if one exists — use list_playbooks) and Australian-law sanity checks (correct jurisdiction, execution blocks, defined-term consistency, cross-references). Output redline notes with severity for each issue.`,
-        tool_allowlist: ROLE_TOOLSETS.review,
+        tool_allowlist: toolsets.review,
       },
     ],
   };
@@ -64,7 +69,11 @@ async function insertSteps(
     depends_on: s.depends_on,
     role: s.role,
     instruction: s.instruction,
-    tool_allowlist: ROLE_TOOLSETS[s.role],
+    // Reuse the allowlist already computed by the planner/sanitizer for this
+    // step (role- and Jade-access-state-aware) — don't recompute from role
+    // alone, or an edited/approved plan could silently drift back to stale
+    // tool access.
+    tool_allowlist: s.tool_allowlist,
   }));
   const { error } = await db.from("agent_steps").insert(rows);
   if (error) throw new Error(error.message);
@@ -131,7 +140,7 @@ agentsRouter.post("/", requireAuth, async (req, res) => {
     // call): analyse the precedent, draft from it, self-review.
     const plan =
       kind === "draft_from_precedent"
-        ? buildDraftFromPrecedentPlan(request)
+        ? buildDraftFromPrecedentPlan(request, await getJadeAccessApproved())
         : await planRun({
             request,
             model,
@@ -261,7 +270,11 @@ agentsRouter.post("/:id/approve", requireAuth, async (req, res) => {
 
   try {
     if (req.body?.plan) {
-      const edited = sanitizePlan(req.body.plan, run.request as string);
+      const edited = sanitizePlan(
+        req.body.plan,
+        run.request as string,
+        await getJadeAccessApproved(),
+      );
       await insertSteps(db, run.id as string, edited);
       await db
         .from("agent_runs")

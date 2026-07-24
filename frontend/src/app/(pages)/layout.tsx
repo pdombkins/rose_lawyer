@@ -9,7 +9,7 @@ import { SidebarContext } from "@/app/contexts/SidebarContext";
 import { PageChromeContext } from "@/app/contexts/PageChromeContext";
 import { AppSidebar } from "@/app/components/shared/AppSidebar";
 
-export default function MikeLayout({
+export default function RoseLayout({
     children,
 }: {
     children: React.ReactNode;

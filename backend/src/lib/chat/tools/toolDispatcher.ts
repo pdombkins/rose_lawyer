@@ -24,6 +24,7 @@ import {
   formatAGLC4Citation,
 } from "../../jade";
 import { verifyCitation } from "../../verification";
+import { austliiSearchUrl } from "../../verification/assertionCheck";
 import { recordAudit, argsDigest } from "../../audit";
 import { saveClause, searchClauses, formatClausesForModel } from "../../clauses";
 import {
@@ -1867,6 +1868,24 @@ export async function runToolCalls(
         jurisdiction,
         result_count: 0,
       };
+      // Jade.io access requires an admin to have obtained BarNet's written
+      // permission (jade_access_approved). When it's off, Rose must not call
+      // Jade at all — fall back to a human-verified AustLII search link.
+      if (!(await getJadeAccessApproved())) {
+        const searchUrl = austliiSearchUrl(query ?? "");
+        write(`data: ${JSON.stringify({ type: "jade_search_cases_error", error: "Jade.io access not approved" })}\n\n`);
+        toolResults.push({
+          role: "tool",
+          tool_call_id: tc.id,
+          content: JSON.stringify({
+            status: "jade_not_approved",
+            message:
+              "Jade.io access is not approved on this instance. Do not present Jade case-law results. Direct the user to search AustLII themselves and record their own verified/not_verified outcome.",
+            austlii_search_url: searchUrl,
+          }),
+        });
+        continue;
+      }
       write(`data: ${JSON.stringify({ type: "jade_search_cases_start", query })}\n\n`);
       try {
         const results = await searchJadeCases({
@@ -1910,6 +1929,21 @@ export async function runToolCalls(
         jurisdiction?: string;
         limit?: number;
       };
+      if (!(await getJadeAccessApproved())) {
+        const searchUrl = austliiSearchUrl(query ?? "");
+        write(`data: ${JSON.stringify({ type: "jade_search_legislation_error", error: "Jade.io access not approved" })}\n\n`);
+        toolResults.push({
+          role: "tool",
+          tool_call_id: tc.id,
+          content: JSON.stringify({
+            status: "jade_not_approved",
+            message:
+              "Jade.io access is not approved on this instance. Do not present Jade legislation results. Direct the user to search AustLII (or the relevant official legislation register) themselves.",
+            austlii_search_url: searchUrl,
+          }),
+        });
+        continue;
+      }
       write(`data: ${JSON.stringify({ type: "jade_search_legislation_start", query })}\n\n`);
       try {
         const results = await searchJadeLegislation({
@@ -1976,6 +2010,19 @@ export async function runToolCalls(
 
     } else if (tc.function.name === JADE_TOOL_NAMES.fetchDocument) {
       const { url } = args as { url?: string };
+      if (!(await getJadeAccessApproved())) {
+        write(`data: ${JSON.stringify({ type: "jade_fetch_document_error", url, error: "Jade.io access not approved" })}\n\n`);
+        toolResults.push({
+          role: "tool",
+          tool_call_id: tc.id,
+          content: JSON.stringify({
+            status: "jade_not_approved",
+            message:
+              "Jade.io access is not approved on this instance. Do not fetch or present Jade judgment text. Use verify_citation / verify_assertions instead, which hand the user an AustLII search link to review themselves.",
+          }),
+        });
+        continue;
+      }
       write(`data: ${JSON.stringify({ type: "jade_fetch_document_start", url })}\n\n`);
       try {
         const result = await fetchJadeDocument(url ?? "");

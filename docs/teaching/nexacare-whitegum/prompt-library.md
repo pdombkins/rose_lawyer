@@ -1,6 +1,6 @@
-# Mike (Australia) — NexaCare/Whitegum Prompt & Workflow Library
+# Rose — NexaCare/Whitegum Prompt & Workflow Library
 
-*Research and educational use only. All entities and documents are fictional. Nothing Mike produces is legal advice, and every citation must be verified before you rely on it.*
+*Research and educational use only. All entities and documents are fictional. Nothing Rose produces is legal advice, and every citation must be verified before you rely on it.*
 
 You are a lawyer at Kendry & Slate (K&S), acting for NexaCare Health on its acquisition of Whitegum Medical Centres Pty Ltd — 18 medical centres across NSW and QLD, share acquisition, accelerated timetable. This library gives you realistic starting prompts, organised by role. Copy them, adapt them, and pay attention to *why* each one is framed the way it is: good prompts state the task, the source documents, the output format, and the constraints.
 
@@ -27,7 +27,7 @@ Aisha's Week 2 tasking is the core exercise: map the vendor's demands to the con
 2. *"Compare the MediTrax notice letter against the MSA extract clause by clause. For each of the vendor's five demands, state: the governing clause, whether the demand is within contract / discretionary / overreach, and the negotiating lever. Present as a table."* — the heart of the Week 2 task. Check the model's work: did it catch cl 14.5 (no fee variation on change of control) against the 35% uplift demand? Cl 14.4's 15-business-day deemed consent against the 5-day ultimatum? Cl 25.1's narrow suspension grounds against the read-only threat?
 3. *"Using the K&S one-pager format (headline issue, RAG rating, business impact across operations/timeline/cost, recommended path, next steps), draft the EHR one-pager with options A, B and C from the matter list task."*
 4. *"Draft a Q&A list for our CIO contact and the vendor: cutover windows, extract cadence, prior test results, existing DPIA/TPRM materials, standard vendor assurance templates."*
-5. *"What Commonwealth privacy obligations are engaged when patient records are migrated between platforms during an acquisition? List the propositions you are relying on, then run citation verification on all of them."* — then open /verify and adjudicate each assertion yourself via the AustLII search links. **This is the discipline: Mike never lets an unverified citation through silently, and neither should you.**
+5. *"What Commonwealth privacy obligations are engaged when patient records are migrated between platforms during an acquisition? List the propositions you are relying on, then run citation verification on all of them."* — then open /verify and adjudicate each assertion yourself via the AustLII search links. **This is the discipline: Rose never lets an unverified citation through silently, and neither should you.**
 6. *"Format these authorities in AGLC4: [paste]"* — then verify each one exists.
 7. Run the seeded agent workflow **"EHR vendor notice — contract vs demands (Week 2)"** against the MSA extract and notice letter, review the plan before approving it, and compare the agent's output to your own manual answer to prompt 2. Where did it do better? Where did it hallucinate or overreach?
 
@@ -38,7 +38,7 @@ Aisha's Week 2 tasking is the core exercise: map the vendor's demands to the con
 3. *"Save the exit-assistance clause we prefer into the clause library, tagged TSA, with guidance on when to use it."* — clause capture.
 4. *"Search the clause library for our positions on data portability and draft a two-paragraph variation to MSA clause 18 that gets us unlimited extracts during transition at no charge."*
 5. *"Draft an interim licence variation for MediTrax using the 'Interim licence during transition' clause as the base, filling the Migration Completion Date mechanics with fortnightly reviews and a 48-hour cutover cap."*
-6. Connect an external tool via the MCP server and query `search_clauses` from outside Mike — then explain to the team what a PAT is and why it is shown only once.
+6. Connect an external tool via the MCP server and query `search_clauses` from outside Rose — then explain to the team what a PAT is and why it is shown only once.
 
 ## Lily Chen — Senior Associate (synthesis, options, client-ready output)
 
@@ -63,7 +63,7 @@ Aisha's Week 2 tasking is the core exercise: map the vendor's demands to the con
 3. *"Across the three playbooks, which dealbreaker positions is the other side most likely to attack under time pressure, and what is our least-cost concession path that stays inside the fallbacks?"*
 4. Review Regwatch: triage this week's regulatory events across the three active watches (health privacy, workforce, competition). *"Which of these events, if any, changes advice we have already given on NexaCare?"*
 5. Check matter economics on the usage page: spend by model and by project against the fixed-fee milestones. *"Is the AI spend on this matter tracking to the budget assumptions in the engagement letter?"*
-6. Priya, on supervision: *"Draft a one-page note for the team on when they may rely on Mike's output without partner sign-off, and when 'Stop the Line' applies to an AI-generated document."*
+6. Priya, on supervision: *"Draft a one-page note for the team on when they may rely on Rose's output without partner sign-off, and when 'Stop the Line' applies to an AI-generated document."*
 
 ---
 
@@ -78,4 +78,4 @@ Aisha's Week 2 tasking is the core exercise: map the vendor's demands to the con
 
 ## A note on legal sources
 
-Mike computes **outbound AustLII search links only** — it never fetches or scrapes AustLII, and automated Jade.io checking runs only if your administrator has enabled it with BarNet's permission. When verification falls back to human self-validation, *you* open the link, *you* read the authority, and *you* record the verdict. That is not a limitation of the tool; it is the point of the exercise.
+Rose computes **outbound AustLII search links only** — it never fetches or scrapes AustLII, and automated Jade.io checking runs only if your administrator has enabled it with BarNet's permission. When verification falls back to human self-validation, *you* open the link, *you* read the authority, and *you* record the verdict. That is not a limitation of the tool; it is the point of the exercise.

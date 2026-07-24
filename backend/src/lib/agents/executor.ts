@@ -16,6 +16,7 @@ import { buildDocContext } from "../chat/contextBuilders";
 import { getUserApiKeys } from "../userApiKeys";
 import { resolveModel, DEFAULT_MAIN_MODEL } from "../llm";
 import { getOrgContextForUser } from "../orgContext";
+import { getJadeAccessApproved } from "../appSettings";
 import { notify } from "../notifications";
 import { recordAudit } from "../audit";
 import { buildRolePrompt } from "./rolePrompts";
@@ -282,6 +283,7 @@ async function runStep(
     const systemPrompt = buildRolePrompt(step.role, {
         orgContext: ctx.orgContext,
         runContext: ctx.runContext,
+        jadeApproved: await getJadeAccessApproved(db),
     });
     const docAvailability = Object.entries(ctx.docIndex).map(
         ([doc_id, info]) => ({ doc_id, filename: info.filename }),

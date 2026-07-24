@@ -22,7 +22,7 @@ import {
     type PlaybookSummary,
     type PlaybookRule,
     type PlaybookSeverity,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import { PageHeader } from "@/app/components/shared/PageHeader";
 import { useRouter } from "next/navigation";
 import { PillButton } from "@/app/components/ui/pill-button";

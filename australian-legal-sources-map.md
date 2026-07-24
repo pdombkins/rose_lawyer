@@ -1,8 +1,8 @@
 # Australian Primary Law — Official Source Map
 
-**Purpose:** Replace AustLII/Jade as data sources for Mike with official, first-party sources that permit reuse. Target: full coverage of all Acts and Regulations (Commonwealth + 8 states/territories) and the widest feasible case-law coverage.
+**Purpose:** Replace AustLII/Jade as data sources for Rose with official, first-party sources that permit reuse. Target: full coverage of all Acts and Regulations (Commonwealth + 8 states/territories) and the widest feasible case-law coverage.
 
-**Date:** 5 July 2026 · Compiled for the Mike (Australia) teaching build.
+**Date:** 5 July 2026 · Compiled for the Rose teaching build.
 
 > **Key legal caveat.** "Official source" is not the same as "openly licensed." Australian statutes, regulations and judgments are subject to **Crown copyright** (Copyright Act 1968 (Cth) ss 176–178) unless a jurisdiction has waived or licensed it. Some jurisdictions now publish under Creative Commons (open); others still assert "all rights reserved / personal use only." For anything not openly licensed, the compliant options are (a) get written permission from the register/court, or (b) rely on a copyright exception (fair dealing for research or study). Access blocking/robots rules are a *separate* constraint from copyright — check both per source. This document flags licence status per source; verify the live copyright notice before ingesting, because these policies change.
 

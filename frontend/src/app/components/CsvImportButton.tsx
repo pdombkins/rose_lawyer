@@ -8,7 +8,7 @@
 
 import { useRef, useState } from "react";
 import { Loader2, Upload, X } from "lucide-react";
-import type { ImportResult } from "@/app/lib/mikeApi";
+import type { ImportResult } from "@/app/lib/roseApi";
 
 export default function CsvImportButton({
     onImport,

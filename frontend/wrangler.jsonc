@@ -7,7 +7,7 @@
   // must be present in the environment when `npm run deploy` runs — setting them
   // here as vars is NOT enough. See docs/deployment/DEPLOYMENT.md.
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "mike-australia",
+  "name": "rose-lawyer",
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-06-01",
   "compatibility_flags": ["nodejs_compat"],

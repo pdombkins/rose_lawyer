@@ -31,7 +31,7 @@ import {
     deleteProjectFolder,
     moveDocumentToFolder,
     moveSubfolderToFolder,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import { useAssistantChat } from "@/app/hooks/useAssistantChat";
 import { useChatHistoryContext } from "@/app/contexts/ChatHistoryContext";
 import { UserMessage } from "@/app/components/assistant/UserMessage";
@@ -45,7 +45,7 @@ import {
     SpreadsheetView,
     DocxView,
 } from "@/app/components/shared/views/LazyViews";
-import { MikeIcon } from "@/app/components/chat/mike-icon";
+import { RoseIcon } from "@/app/components/chat/rose-icon";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useUserProfile } from "@/app/contexts/UserProfileContext";
 import { useSidebar } from "@/app/contexts/SidebarContext";
@@ -130,7 +130,7 @@ function AssistantGreeting({ username }: { username: string }) {
                             "transform 900ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                     }}
                 >
-                    <MikeIcon size={ICON_SIZE} />
+                    <RoseIcon size={ICON_SIZE} />
                 </div>
                 <h1
                     ref={textRef}
@@ -579,7 +579,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
 
     const handleChatDrop = (e: React.DragEvent) => {
         e.preventDefault();
-        const docId = e.dataTransfer.getData("application/mike-doc");
+        const docId = e.dataTransfer.getData("application/rose-doc");
         if (!docId) return;
         const doc = project?.documents?.find((d) => d.id === docId);
         if (doc) chatInputRef.current?.addDoc(doc);
@@ -865,10 +865,10 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                                 // Only show the upload overlay for external file drags, not internal moves
                                 const isInternal =
                                     Array.from(e.dataTransfer.types).includes(
-                                        "application/mike-doc",
+                                        "application/rose-doc",
                                     ) ||
                                     Array.from(e.dataTransfer.types).includes(
-                                        "application/mike-folder",
+                                        "application/rose-folder",
                                     );
                                 if (!isInternal) setExplorerDragOver(true);
                             }}
@@ -937,10 +937,10 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                                 onDrop={async (e) => {
                                     e.preventDefault();
                                     const docId = e.dataTransfer.getData(
-                                        "application/mike-doc",
+                                        "application/rose-doc",
                                     );
                                     const folderId = e.dataTransfer.getData(
-                                        "application/mike-folder",
+                                        "application/rose-folder",
                                     );
                                     if (docId) {
                                         e.stopPropagation();

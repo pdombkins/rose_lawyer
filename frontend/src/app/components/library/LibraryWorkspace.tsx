@@ -28,7 +28,7 @@ import {
     renameLibraryFolder,
     uploadLibraryDocument,
     type LibraryKind,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/roseApi";
 import type { Document } from "@/app/components/shared/types";
 
 type LibraryViewCollection = {
@@ -55,10 +55,14 @@ type LibraryWorkspaceContextValue = {
     ) => void;
 };
 
-const LIBRARY_TABS: { id: LibraryKind | "clauses"; label: string }[] = [
+export const LIBRARY_TABS: {
+    id: LibraryKind | "clauses" | "resources";
+    label: string;
+}[] = [
     { id: "files", label: "Files" },
     { id: "templates", label: "Templates" },
     { id: "clauses", label: "Clauses" },
+    { id: "resources", label: "Legal resources" },
 ];
 
 const EMPTY_COLLECTION: LibraryViewCollection = {
@@ -317,13 +321,15 @@ export function LibraryCollectionPage({ kind }: { kind: LibraryKind }) {
                 <TableToolbar
                     items={LIBRARY_TABS}
                     active={kind}
-                    onChange={(next: LibraryKind | "clauses") =>
+                    onChange={(next: LibraryKind | "clauses" | "resources") =>
                         router.push(
                             next === "files"
                                 ? "/library"
                                 : next === "clauses"
                                   ? "/clauses"
-                                  : "/library/templates",
+                                  : next === "resources"
+                                    ? "/library/resources"
+                                    : "/library/templates",
                         )
                     }
                     actions={

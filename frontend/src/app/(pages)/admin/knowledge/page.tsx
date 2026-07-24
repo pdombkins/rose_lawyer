@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Loader2 } from "lucide-react";
-import { adminGetKnowledge, type AdminKnowledge } from "@/app/lib/mikeApi";
+import { adminGetKnowledge, type AdminKnowledge } from "@/app/lib/roseApi";
 
 export default function AdminKnowledgePage() {
     const [data, setData] = useState<AdminKnowledge | null>(null);

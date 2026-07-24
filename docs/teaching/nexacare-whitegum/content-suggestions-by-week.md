@@ -1,4 +1,4 @@
-# Further Mike (Australia) content — mapped to LAWS3850 weeks
+# Further Rose content — mapped to LAWS3850 weeks
 
 *Research and educational use only. Companion to the NexaCare/Whitegum seed package.*
 
@@ -10,9 +10,9 @@
 
 ## The gap this fills
 
-The content already installed is deliberately substantive-law-heavy: an EHR change-of-control playbook, lease/TSA reviews, a clause library, diligence and verification workflows. That supports the *deal*. But LAWS3850 is a **Legal Project Management** course — Kendry & Slate is the vehicle for teaching scoping, teams, process, legal tech, sourcing, ethics, CX/EX and change. Most weeks' activities are about *how the work is managed*, and Mike currently has little that speaks to that. The additions below are organised by teaching week, each expressed as concrete Mike primitives (workflows with approval-gated plan templates, playbooks, clause/list/tabular templates, Regwatch watches), and each tied to an existing class activity.
+The content already installed is deliberately substantive-law-heavy: an EHR change-of-control playbook, lease/TSA reviews, a clause library, diligence and verification workflows. That supports the *deal*. But LAWS3850 is a **Legal Project Management** course — Kendry & Slate is the vehicle for teaching scoping, teams, process, legal tech, sourcing, ethics, CX/EX and change. Most weeks' activities are about *how the work is managed*, and Rose currently has little that speaks to that. The additions below are organised by teaching week, each expressed as concrete Rose primitives (workflows with approval-gated plan templates, playbooks, clause/list/tabular templates, Regwatch watches), and each tied to an existing class activity.
 
-A second, course-level opportunity runs underneath Weeks 4 and 7: **Mike itself is a specimen of GenAI in legal practice.** Its verification gate, audit log, RBAC/ethical wall, and per-query cost tracking are exactly the controls the NSW guidance expects. Content that makes those visible turns the tool into the object of study, not just the means.
+A second, course-level opportunity runs underneath Weeks 4 and 7: **Rose itself is a specimen of GenAI in legal practice.** Its verification gate, audit log, RBAC/ethical wall, and per-query cost tracking are exactly the controls the NSW guidance expects. Content that makes those visible turns the tool into the object of study, not just the means.
 
 ---
 
@@ -20,9 +20,9 @@ A second, course-level opportunity runs underneath Weeks 4 and 7: **Mike itself 
 
 *Class activity: review the Kendry & Slate breakdown structure and gantt chart.*
 
-- **Workflow — "Scope a matter from a client brief"** (assistant, approval-gated). Intake reads the client brief; drafting produces a work-breakdown structure by phase, an assumptions register, an explicit out-of-scope list, and a fixed-fee milestone breakdown matching the engagement model (DD/risk report → SPA signing → lease-consent readiness → completion, with the 10% holdback). Students compare Mike's WBS against the provided `NexaCare_MSA_WBS.xlsx` — what did it miss, what did it over-scope?
+- **Workflow — "Scope a matter from a client brief"** (assistant, approval-gated). Intake reads the client brief; drafting produces a work-breakdown structure by phase, an assumptions register, an explicit out-of-scope list, and a fixed-fee milestone breakdown matching the engagement model (DD/risk report → SPA signing → lease-consent readiness → completion, with the 10% holdback). Students compare Rose's WBS against the provided `NexaCare_MSA_WBS.xlsx` — what did it miss, what did it over-scope?
 - **Tabular template — "Estimate register"**: columns for task, hours estimate, basis of estimate, and a *cognitive-bias check* (anchoring / optimism / planning-fallacy prompt). Directly serves the "estimating and cognitive biases" topic.
-- **Discussion hook (no build needed):** Mike's `query_costs` cost badge is live actual-vs-budget data. Pair it with the Victorian LSB *Agreed Pricing* reading to debate value pricing — students can see the real AUD cost of each AI-assisted task against the fixed-fee milestones.
+- **Discussion hook (no build needed):** Rose's `query_costs` cost badge is live actual-vs-budget data. Pair it with the Victorian LSB *Agreed Pricing* reading to debate value pricing — students can see the real AUD cost of each AI-assisted task against the fixed-fee milestones.
 
 ## Week 2 — Teams, leadership, communication, psychological safety
 
@@ -46,14 +46,14 @@ A second, course-level opportunity runs underneath Weeks 4 and 7: **Mike itself 
 
 - **Workflow — "User-journey map for a stakeholder"**: per persona, produce phases → actions → touchpoints → pain points → "moments that matter" (the personas already name these). Serves the journey-mapping activity end to end.
 - **Template — "Plan on a page"**: one-page tech-initiative canvas (problem, users, build/borrow/buy, success metrics, risks) from the CLI reading, seeded with a NexaCare example (e.g. automating the lease-consent tracker).
-- **Governance playbook — "GenAI in NSW legal practice"** *(high value).* Encode the expectations from **SC Gen 23** (commenced 3 Feb 2025) and the **joint AI Statement / Solicitor's Guide** as a playbook students run Mike's *own* outputs against: every citation verified (and verification **not** done by GenAI — SC Gen 23's own rule, which is precisely Mike's human-validation gate); no AI-generated evidence/affidavit content; confidentiality of client data; independent professional judgment; disclosure/competence. Verify current wording before class — this is exactly the citation-checking discipline being taught.
+- **Governance playbook — "GenAI in NSW legal practice"** *(high value).* Encode the expectations from **SC Gen 23** (commenced 3 Feb 2025) and the **joint AI Statement / Solicitor's Guide** as a playbook students run Rose's *own* outputs against: every citation verified (and verification **not** done by GenAI — SC Gen 23's own rule, which is precisely Rose's human-validation gate); no AI-generated evidence/affidavit content; confidentiality of client data; independent professional judgment; disclosure/competence. Verify current wording before class — this is exactly the citation-checking discipline being taught.
 - **Regwatch watch — "Legal-profession AI guidance"**: official feeds only (court, Law Society, VLSB+C, Law Council). Lets students see regulatory monitoring working on the very topic they're debating. (Respects the project's no-scrape / official-source rule.)
 
 ## Week 7 — Demand management, right-sourcing, risk & quality
 
 *Class activity: identify and quantify outsourcing opportunities in the case study.*
 
-- **Workflow — "Right-sourcing analysis"**: for each WBS task, classify keep-with-partner / delegate-to-junior / paralegal / commoditise-template / ALSP-outsource / automate-with-Mike, with a rationale and a rough cost/risk delta. Produces exactly the "identify and quantify opportunities for outsourcing" deliverable.
+- **Workflow — "Right-sourcing analysis"**: for each WBS task, classify keep-with-partner / delegate-to-junior / paralegal / commoditise-template / ALSP-outsource / automate-with-Rose, with a rationale and a rough cost/risk delta. Produces exactly the "identify and quantify opportunities for outsourcing" deliverable.
 - **Playbook — "Risk & quality gates"**: quality checkpoints and a risk-acceptance ladder for disaggregated work (who reviews outsourced output, what can't leave the firm), linking to the operations `risk-assessment` skill and the Lacity/Willcocks LPO risk reading.
 - **Tabular template — "Disaggregation register"**: task, current owner, candidate model, annualised volume, unit cost, risk rating — the quantification the activity asks for.
 
@@ -64,13 +64,13 @@ A second, course-level opportunity runs underneath Weeks 4 and 7: **Mike itself 
 - **Workflow — "LPM ethics check"**: run a proposed action (e.g. "compress diligence by two weeks and lean on AI review") against a checklist drawn from Rogers & Dombkins — cost disclosure, scope-creep transparency, competence, supervision of AI output, confidentiality, independent judgment — flagging where commercial pressure and professional obligation conflict. This is the Week-8 debate made operational.
 - **Workflow — "Client happy-path map"**: from first contact to post-completion debrief, the ideal CX journey with the emotional highs/lows per persona; contrast with the Week-2 crisis path.
 - **EX note (uses the personas' wellbeing cues):** Lily's over-commitment/burnout risk, Aisha's anxiety under pressure, David's external stressors — an EX-lens retro on how the accelerated timetable was staffed. Connects the Green *Culture Hacker* reading to the actual team.
-- **Ethics-as-control tie-in:** Mike's audit log + verification report are a defensible record of *how* an AI-assisted output was checked — a concrete artefact for the "instilling ethical judgment in the age of AI" (Legg) discussion.
+- **Ethics-as-control tie-in:** Rose's audit log + verification report are a defensible record of *how* an AI-assisted output was checked — a concrete artefact for the "instilling ethical judgment in the age of AI" (Legg) discussion.
 
 ## Week 9 — Transformation & change management
 
 *Class activity: build a change-management approach for the client-engagement "happy path".*
 
-- **Workflow — "Change plan (Kotter 8-step)"**: generate a rollout plan for adopting the happy-path (or for adopting Mike/LPM firm-wide), structured on Kotter, with a stakeholder resistance map keyed to the K&S personas (James's skepticism of "shiny tech", Priya's tech-forward advocacy, David's audit-trail caution). Serves the Week-9 activity and connects to the operations `change-request` skill.
+- **Workflow — "Change plan (Kotter 8-step)"**: generate a rollout plan for adopting the happy-path (or for adopting Rose/LPM firm-wide), structured on Kotter, with a stakeholder resistance map keyed to the K&S personas (James's skepticism of "shiny tech", Priya's tech-forward advocacy, David's audit-trail caution). Serves the Week-9 activity and connects to the operations `change-request` skill.
 - **Template — "Innovation one-pager"**: problem, hypothesis, pilot, success metric, scale/kill decision — for staging the change.
 
 ## Cross-cutting (any week / Week 10 group assessment)
@@ -83,6 +83,6 @@ A second, course-level opportunity runs underneath Weeks 4 and 7: **Mike itself 
 
 ## What I'd prioritise
 
-If you want the biggest teaching return for the least build: **(1)** the Week-1 scoping workflow (anchors the whole course and reuses the WBS you already have), **(2)** the Week-4 GenAI-governance playbook + Regwatch watch (turns Mike into the object of study and is the most novel, defensible content), and **(3)** the Week-8 LPM ethics-check workflow. Those three cover the course's distinctive spine — scope/price, govern AI, act ethically — and each reuses assets already in the seed.
+If you want the biggest teaching return for the least build: **(1)** the Week-1 scoping workflow (anchors the whole course and reuses the WBS you already have), **(2)** the Week-4 GenAI-governance playbook + Regwatch watch (turns Rose into the object of study and is the most novel, defensible content), and **(3)** the Week-8 LPM ethics-check workflow. Those three cover the course's distinctive spine — scope/price, govern AI, act ethically — and each reuses assets already in the seed.
 
 Everything here is buildable with the same primitives already installed (approval-gated workflow plan templates, playbooks + rules, tabular column sets, clauses, list items, Regwatch watches). Say which weeks you want and I'll seed them the same way — instructor-owned, shared to the class project.

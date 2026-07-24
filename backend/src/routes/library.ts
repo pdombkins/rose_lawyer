@@ -15,8 +15,18 @@ import {
   extractPdfText,
 } from "../lib/chat/tools/documentOps";
 import { handleDocumentUpload } from "./documents";
+import { getJadeAccessApproved } from "../lib/appSettings";
+import { resolveLegalResources } from "../lib/legalResources";
 
 export const libraryRouter = Router();
+
+// GET /library/legal-resources — combined case/legislation resource list
+// (registered before the /:kind catch-all so the literal path wins).
+libraryRouter.get("/legal-resources", requireAuth, async (_req, res) => {
+  const jadeAccessApproved = await getJadeAccessApproved();
+  const resources = resolveLegalResources(jadeAccessApproved);
+  res.json({ jadeAccessApproved, resources });
+});
 
 type LibraryKind = "file" | "template";
 

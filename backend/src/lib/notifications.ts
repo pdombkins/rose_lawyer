@@ -28,7 +28,7 @@ export type NotifyArgs = {
 };
 
 const FROM_ADDRESS =
-    process.env.NOTIFICATIONS_FROM_EMAIL || "Mike (Australia) <onboarding@resend.dev>";
+    process.env.NOTIFICATIONS_FROM_EMAIL || "Rose <onboarding@resend.dev>";
 
 export async function notify(args: NotifyArgs): Promise<void> {
     const db = createServerSupabase();
@@ -68,7 +68,7 @@ async function sendEmailIfEnabled(args: NotifyArgs): Promise<void> {
 
     const appUrl = frontendBaseUrl();
     const linkHtml = args.link
-        ? `<p><a href="${appUrl}${args.link}">Open in Mike</a></p>`
+        ? `<p><a href="${appUrl}${args.link}">Open in Rose</a></p>`
         : "";
     await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -79,8 +79,8 @@ async function sendEmailIfEnabled(args: NotifyArgs): Promise<void> {
         body: JSON.stringify({
             from: FROM_ADDRESS,
             to: [email],
-            subject: `[Mike] ${args.title}`,
-            html: `<p>${args.title}</p>${args.body ? `<p>${args.body}</p>` : ""}${linkHtml}<p style="color:#888;font-size:12px">Mike (Australia) — research & educational use only.</p>`,
+            subject: `[Rose] ${args.title}`,
+            html: `<p>${args.title}</p>${args.body ? `<p>${args.body}</p>` : ""}${linkHtml}<p style="color:#888;font-size:12px">Rose — research & educational use only.</p>`,
         }),
     });
 }

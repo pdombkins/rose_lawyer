@@ -2,7 +2,7 @@
 
 > **Status: INSTALLED (hybrid strategy) on this instance, 23 Jul 2026.** Owner: pdombkins@gmail.com. Project shared as *editor* with rosevalentinemorgan@gmail.com and tim.desousa@gmail.com. All 5 documents are in the Library **and** the project, and all 5 are indexed into the knowledge base. Note: `POST /library/:documentId/index` had two bugs (read `req.userId` instead of `res.locals.userId`; selected the dropped `documents.filename` column) and no docx support — fixed in `backend/src/routes/library.ts` as part of this install (docx/pptx/xlsx now route through `extractDocumentMarkdown`). The steps below remain for fresh installs.
 
-Loads the fictional Kendry & Slate / NexaCare / Whitegum matter into Mike (Australia) so students start with a populated workspace. Educational use only.
+Loads the fictional Kendry & Slate / NexaCare / Whitegum matter into Rose so students start with a populated workspace. Educational use only.
 
 ## Install (per workspace)
 

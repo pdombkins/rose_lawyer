@@ -36,7 +36,7 @@ Ordered easy → hard. Each has a distinct trap; the recurring teaching point is
 ## SF-6 · The AI citation that didn't verify (capstone — ties to Week 4)
 **Paste:** *"A memo sent to Jonathan Wu cited a Federal Court authority that his team could not locate. It appears the citation came from an AI-assisted draft and was never human-verified. Wu is asking what else in our work product he can trust. Draft the recovery response."*
 
-**Trap / debrief:** CX recovery meets GenAI governance — SC Gen 23 requires human verification of every citation, so the remediation section can point to a *real* control (the Verify page / human self-validation path) rather than a vague promise. Watch for drafts that overpromise ("this can never happen again"). Follow up by actually running **Verify citations** on a Mike output.
+**Trap / debrief:** CX recovery meets GenAI governance — SC Gen 23 requires human verification of every citation, so the remediation section can point to a *real* control (the Verify page / human self-validation path) rather than a vague promise. Watch for drafts that overpromise ("this can never happen again"). Follow up by actually running **Verify citations** on a Rose output.
 
 ---
 

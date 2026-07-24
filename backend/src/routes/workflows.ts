@@ -76,7 +76,7 @@ type OpenSourceSubmissionSummary = Pick<
 };
 
 const DEFAULT_WORKFLOW_CONTRIBUTOR: WorkflowContributor = {
-  name: "Mike",
+  name: "Rose",
   organisation: null,
   role: null,
   linkedin: null,
@@ -742,7 +742,7 @@ workflowsRouter.post("/:workflowId/share", requireAuth, asyncRoute(async (req, r
   const missingSharedUsers = await findMissingUserEmails(db, normalizedEmails);
   if (missingSharedUsers.length > 0) {
     return void res.status(400).json({
-      detail: `${missingSharedUsers[0]} does not belong to a Mike user.`,
+      detail: `${missingSharedUsers[0]} does not belong to a Rose user.`,
     });
   }
 
@@ -839,11 +839,15 @@ workflowsRouter.post("/:workflowId/run", requireAuth, asyncRoute(
       });
 
     const { sanitizePlan } = await import("../lib/agents/planner");
-    const { ROLE_TOOLSETS } = await import("../lib/agents/types");
     const { filterAccessibleDocumentIds } = await import("../lib/access");
     const { executeRunInBackground } = await import("../lib/agents/executor");
+    const { getJadeAccessApproved } = await import("../lib/appSettings");
 
-    const plan = sanitizePlan(workflow.plan_template, workflow.title as string);
+    const plan = sanitizePlan(
+      workflow.plan_template,
+      workflow.title as string,
+      await getJadeAccessApproved(),
+    );
     const request =
       typeof req.body?.request === "string" && req.body.request.trim()
         ? req.body.request.trim()
@@ -884,7 +888,7 @@ workflowsRouter.post("/:workflowId/run", requireAuth, asyncRoute(
       depends_on: s.depends_on,
       role: s.role,
       instruction: s.instruction,
-      tool_allowlist: ROLE_TOOLSETS[s.role],
+      tool_allowlist: s.tool_allowlist,
     }));
     await db.from("agent_steps").insert(rows);
     void executeRunInBackground; // execution starts on approval via /agents/:id/approve

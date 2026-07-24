@@ -1,7 +1,7 @@
 /**
- * C007 — Mike as an MCP server (adapted from Harvey's M365 Copilot/Cowork
+ * C007 — Rose as an MCP server (adapted from Harvey's M365 Copilot/Cowork
  * integration). External agent hosts (Claude, Cowork, Copilot Studio) call
- * Mike's legal tools over Streamable-HTTP MCP (JSON-RPC 2.0), authenticated
+ * Rose's legal tools over Streamable-HTTP MCP (JSON-RPC 2.0), authenticated
  * with a per-user personal access token (user_pats, sha256-hashed).
  * Read-mostly allowlist; every call is audit-logged and cost-tracked.
  */
@@ -12,9 +12,13 @@ import { searchKnowledge, formatKnowledgeForModel } from "../lib/knowledgeBase";
 import { listPlaybooks, getPlaybook, formatPlaybookForModel } from "../lib/playbooks";
 import { searchClauses, formatClausesForModel } from "../lib/clauses";
 import { validateJadeCitation, formatAGLC4Citation } from "../lib/jade";
-import { runAssertionVerification } from "../lib/verification/assertionCheck";
+import {
+  runAssertionVerification,
+  austliiSearchUrl,
+} from "../lib/verification/assertionCheck";
 import { getUserApiKeys } from "../lib/userApiKeys";
 import { recordAudit } from "../lib/audit";
+import { getJadeAccessApproved } from "../lib/appSettings";
 
 export const mcpServerRouter = Router();
 
@@ -46,7 +50,7 @@ const MCP_TOOLS = [
   {
     name: "search_knowledge",
     description:
-      "Search the user's private Mike knowledge base (Library documents) for relevant passages.",
+      "Search the user's private Rose knowledge base (Library documents) for relevant passages.",
     inputSchema: {
       type: "object",
       properties: {
@@ -83,7 +87,7 @@ const MCP_TOOLS = [
   {
     name: "jade_validate_citation",
     description:
-      "Validate an Australian Medium Neutral Citation (e.g. [2024] HCA 5) against Jade.io.",
+      "Validate an Australian Medium Neutral Citation (e.g. [2024] HCA 5) against Jade.io, when Jade access is approved on this instance. Otherwise returns an AustLII search link for the caller to verify manually.",
     inputSchema: {
       type: "object",
       properties: { citation: { type: "string" } },
@@ -158,7 +162,20 @@ async function callTool(
       return formatClausesForModel(String(args.query ?? ""), clauses);
     }
     case "jade_validate_citation": {
-      const result = await validateJadeCitation(String(args.citation ?? ""));
+      const citation = String(args.citation ?? "");
+      // Jade.io access requires an admin to have obtained BarNet's written
+      // permission (jade_access_approved). When it's off, this MCP server
+      // must not call Jade.io either — fall back to a human-verified
+      // AustLII search link, same as the in-app agent/chat tools.
+      if (!(await getJadeAccessApproved(db))) {
+        return JSON.stringify({
+          status: "jade_not_approved",
+          message:
+            "Jade.io access is not approved on this instance. Open the AustLII search link and verify the citation yourself.",
+          austlii_search_url: austliiSearchUrl(citation),
+        });
+      }
+      const result = await validateJadeCitation(citation);
       return JSON.stringify(result);
     }
     case "jade_format_citation": {
@@ -219,7 +236,7 @@ mcpServerRouter.post("/", async (req, res) => {
       case "initialize":
         return void reply({
           protocolVersion: "2025-03-26",
-          serverInfo: { name: "mike-australia", version: "1.0.0" },
+          serverInfo: { name: "rose-australia", version: "1.0.0" },
           capabilities: { tools: {} },
         });
       case "notifications/initialized":

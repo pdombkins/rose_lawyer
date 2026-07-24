@@ -1,6 +1,6 @@
-# Deploying Mike (Australia) — Railway + Cloudflare
+# Deploying Rose — Railway + Cloudflare
 
-This is the runbook for putting Mike on the public internet so students can sign
+This is the runbook for putting Rose on the public internet so students can sign
 up and reach it. The architecture:
 
 - **Frontend** (Next.js) → **Cloudflare Workers** via OpenNext (`npm run deploy`).
@@ -45,7 +45,7 @@ Prepared in the repo already (no action needed):
    - Optional self-reference vars (`API_PUBLIC_URL`, `BACKEND_URL`) — set these to
      the Railway URL once you have it (Part 3); only needed for the MCP server / callbacks.
 4. Deploy. When it's green, open **Settings → Networking → Generate Domain** to get
-   a public URL like `https://mike-backend-production.up.railway.app`.
+   a public URL like `https://rose-backend-production.up.railway.app`.
 5. Sanity check: visiting that URL in a browser should return a small JSON/health
    response (not an error page).
 
@@ -75,7 +75,7 @@ nothing.
    npm run deploy              # runs opennextjs-cloudflare build + deploy
    ```
 3. The deploy prints your Worker URL, e.g.
-   `https://mike-australia.<your-subdomain>.workers.dev`. Note it.
+   `https://rose-lawyer.<your-subdomain>.workers.dev`. Note it.
 
 > If `npm run deploy` complains about a missing Workers subdomain, set one once in
 > the Cloudflare dashboard (Workers & Pages → your account → set up a `*.workers.dev`
@@ -96,7 +96,7 @@ Now each side learns the other's address.
    fix it and run `npm run deploy` again.
 
 > **Multiple origins:** `FRONTEND_URL` may be a **comma-separated list** of allowed
-> browser origins, e.g. `https://mike-australia.<sub>.workers.dev,https://mikeoss.com`.
+> browser origins, e.g. `https://rose.lawyer,https://rose-lawyer.<sub>.workers.dev`.
 > The invite-email redirect uses the **first** entry, so put your primary front-end
 > URL first. (CORS accepts any origin in the list; a trailing slash is ignored.)
 
@@ -125,7 +125,7 @@ rate-limited to a handful per hour — no good for a class):
 1. In **Resend**: verify a sending domain, create an API key (`re_…`).
 2. **Supabase → Authentication → Emails → SMTP Settings → Enable custom SMTP**:
    Host `smtp.resend.com` · Port `465` · Username `resend` · Password = the Resend
-   API key · Sender `no-reply@<your-domain>` / "Mike (Australia)".
+   API key · Sender `no-reply@<your-domain>` / "Rose".
 3. **Supabase → Authentication → Rate Limits** → raise the email limit above the
    default so a whole cohort can be invited at once.
 4. Put the same `re_…` key into the backend's `RESEND_API_KEY` (Railway variable)
@@ -148,14 +148,19 @@ Once that passes, invite the real cohorts.
 
 ---
 
-## Part 7 — Later: custom domain (mikeoss.com)
+## Part 7 — Custom domain (rose.lawyer)
 
 Only after the `*.workers.dev` flow works end to end:
 
-1. **Cloudflare → Workers & Pages → your Worker → Settings → Domains & Routes → Add
-   custom domain** → `mikeoss.com` (Cloudflare manages the DNS record for you).
+1. **Cloudflare → Workers & Pages → your Worker → Domains → Add Domain** →
+   `rose.lawyer`. This requires the domain to be an active zone in the same
+   Cloudflare account as the Worker — if it's registered elsewhere (e.g. Sav),
+   add it as a zone first and point the registrar's nameservers at the ones
+   Cloudflare assigns (Domains → Add a site → Connect a domain). Re-add any
+   existing DNS records (MX/TXT for email, etc.) — Cloudflare's onboarding scan
+   usually imports them automatically, but double-check.
 2. Update `FRONTEND_URL` (Railway) and the Supabase Site/Redirect URLs to
-   `https://mikeoss.com`.
+   `https://rose.lawyer`.
 3. Make the backend CORS change to allow both origins (see Part 3 note), or switch
    fully to the custom domain.
 4. Re-run the Part 6 checks.

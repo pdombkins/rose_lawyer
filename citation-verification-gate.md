@@ -2,7 +2,7 @@
 
 **Status:** design only (not built). A compliant, human-in-the-loop pattern for verifying Australian citations against AustLII without automated access or page framing.
 
-**Core principle:** Mike never touches AustLII. When a citation needs checking, the **user's own browser** opens AustLII in a **separate tab** (ordinary end-use, permitted under AustLII Usage Policy cl 2(a)). The user reads the result and records only a **verified / not-verified** outcome in Mike. The AI receives that boolean — never AustLII content — and only then finalises its advice.
+**Core principle:** Rose never touches AustLII. When a citation needs checking, the **user's own browser** opens AustLII in a **separate tab** (ordinary end-use, permitted under AustLII Usage Policy cl 2(a)). The user reads the result and records only a **verified / not-verified** outcome in Rose. The AI receives that boolean — never AustLII content — and only then finalises its advice.
 
 ---
 
@@ -10,9 +10,9 @@
 
 These constraints are the whole point — the design is built around them:
 
-- **No programmatic access by Mike.** Mike constructs a search *link*; the user's browser makes the request. Mike never fetches, scrapes, caches, or renders AustLII. (Avoids AUP automated-access + robots restrictions.)
+- **No programmatic access by Rose.** Rose constructs a search *link*; the user's browser makes the request. Rose never fetches, scrapes, caches, or renders AustLII. (Avoids AUP automated-access + robots restrictions.)
 - **No framing/embedding.** AustLII opens in a real new tab/window (`target="_blank" rel="noopener"`), never in an iframe or in-app panel. (Avoids AUP cl 4(a)(ii) "page framing".)
-- **Boolean only — no content ingestion.** The only thing that flows back to the AI is `verified | not_verified` plus the citation string the AI already had. No judgment text, headnotes, summaries, or copied AustLII material enters Mike's store or the AI's context. (Avoids AUP s 5(b) "incorporating AustLII materials … into AI outputs".)
+- **Boolean only — no content ingestion.** The only thing that flows back to the AI is `verified | not_verified` plus the citation string the AI already had. No judgment text, headnotes, summaries, or copied AustLII material enters Rose's store or the AI's context. (Avoids AUP s 5(b) "incorporating AustLII materials … into AI outputs".)
 - **Neutral citations are facts.** An MNC such as `[2024] HCA 5` is a court-assigned identifier, not AustLII property, so it can be displayed and stored freely.
 - **Source-agnostic.** AustLII is offered as the default verification target, but the same gate works if the user prefers another source — nothing in the design depends on AustLII content reaching the AI.
 
@@ -60,7 +60,7 @@ Content-free by design:
 ## 4. UX flow
 
 1. AI drafts advice that relies on one or more Australian authorities.
-2. Instead of presenting the draft as final, Mike shows a **Verification panel** in the chat:
+2. Instead of presenting the draft as final, Rose shows a **Verification panel** in the chat:
    - one card per citation: case name · MNC · **"Search on AustLII ↗"** (opens new tab) · **[Verified] [Not verified]** · optional short note;
    - a progress line: *"1 of 3 verified"*.
 3. User clicks **Search on AustLII ↗** → their browser opens AustLII in a new tab with the case name / MNC pre-entered as the search. User reads it themselves.

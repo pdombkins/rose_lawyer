@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Download, ScrollText, Loader2 } from "lucide-react";
-import { adminGetAudit, type AdminAuditEvent } from "@/app/lib/mikeApi";
+import { adminGetAudit, type AdminAuditEvent } from "@/app/lib/roseApi";
 
 const EVENT_TYPES = [
     "",

@@ -1,17 +1,17 @@
-# LAWS3850 — Teaching Guide for Mike (Australia): the NexaCare / Whitegum case study
+# LAWS3850 — Teaching Guide for Rose: the NexaCare / Whitegum case study
 
-*Master instructor guide. Research and educational use only; nothing Mike produces is legal advice, and every citation must be human-verified before it is relied on. Companion documents: `content-suggestions-by-week.md` (rationale), `teaching-guide.md` (answer-key design notes), `prompt-library.md` (student-facing prompts), and the `seed/` folder (re-runnable SQL + CSVs).*
+*Master instructor guide. Research and educational use only; nothing Rose produces is legal advice, and every citation must be human-verified before it is relied on. Companion documents: `content-suggestions-by-week.md` (rationale), `teaching-guide.md` (answer-key design notes), `prompt-library.md` (student-facing prompts), and the `seed/` folder (re-runnable SQL + CSVs).*
 
 ---
 
 ## 1. What this is
 
-Kendry & Slate (a fictional Australian M&A firm) acts for NexaCare Health on its acquisition of Whitegum Medical Centres (18 medical centres, NSW & QLD; share acquisition; ~350 staff; 16 leases; 6 TSAs; an end-of-life EHR platform). The matter is pre-loaded into Mike (Australia) so students work a realistic legal-project-management scenario inside a real legal-AI tool, rather than reading about one.
+Kendry & Slate (a fictional Australian M&A firm) acts for NexaCare Health on its acquisition of Whitegum Medical Centres (18 medical centres, NSW & QLD; share acquisition; ~350 staff; 16 leases; 6 TSAs; an end-of-life EHR platform). The matter is pre-loaded into Rose so students work a realistic legal-project-management scenario inside a real legal-AI tool, rather than reading about one.
 
 The tool is deliberately used two ways at once:
 
 1. **As the means** — students run scoping, diligence, drafting, review and verification tasks to *do* the LPM activity for each week.
-2. **As the object of study** — Mike's own controls (approval gates, role-scoped tools, citation-verification, audit log, cost tracking) are specimens for the Week-4 and Week-8 discussions on GenAI in legal practice.
+2. **As the object of study** — Rose's own controls (approval gates, role-scoped tools, citation-verification, audit log, cost tracking) are specimens for the Week-4 and Week-8 discussions on GenAI in legal practice.
 
 ## 2. What is installed (all instructor-owned, shared to the class project as *editor*)
 
@@ -47,33 +47,33 @@ Emphasise throughout: the point is the student's **judgment over the output**, n
 
 ### Week 1 — Scoping & estimating
 - **LPM focus:** scoping, WBS/gantt, estimating and cognitive biases, value pricing.
-- **Run in Mike:** *Scope a matter from a client brief (W1)* → compare Mike's WBS against the provided `NexaCare_MSA_WBS.xlsx`; then *Estimate & cognitive-bias register (W1)*.
+- **Run in Rose:** *Scope a matter from a client brief (W1)* → compare Rose's WBS against the provided `NexaCare_MSA_WBS.xlsx`; then *Estimate & cognitive-bias register (W1)*.
 - **Objective:** students can turn a brief into a defensible scope, assumptions and fixed-fee milestones, and can name the biases distorting their estimates.
-- **Facilitate:** "What did Mike over-scope or miss?" "Which estimate is most exposed to the planning fallacy?" Show the **cost badge / usage page** — real AUD per task — and connect to the Victorian LSB value-pricing reading.
+- **Facilitate:** "What did Rose over-scope or miss?" "Which estimate is most exposed to the planning fallacy?" Show the **cost badge / usage page** — real AUD per task — and connect to the Victorian LSB value-pricing reading.
 - **Answer-key cue:** a good scope must surface the five workstreams (EHR/data migration, landlord consents, TSAs, employment transfer, privacy) and tie the 10% holdback to completion.
 
 ### Week 2 — Teams, leadership & communication
 - **LPM focus:** stakeholder management, psychological safety, delegation under pressure.
-- **Run in Mike:** the seeded *EHR vendor notice — contract vs demands (W2)* crisis workflow (delegation under pressure); then *Stakeholder update — persona-tuned (W2)* to see one message rewritten for Keller, Wu and Okoye.
+- **Run in Rose:** the seeded *EHR vendor notice — contract vs demands (W2)* crisis workflow (delegation under pressure); then *Stakeholder update — persona-tuned (W2)* to see one message rewritten for Keller, Wu and Okoye.
 - **Objective:** students adapt communication to stakeholder style and honour "Stop the Line".
 - **Facilitate:** contrast the three persona versions — what changed and why? Use the **plan-approval gate** as the delegation/supervision artefact. The *Stop the Line* clause template models the escalation norm.
 
 ### Week 3 — Process optimisation & design thinking
 - **LPM focus:** process design, Lean/waste, design thinking.
-- **Run in Mike:** *Map and diagnose a process — SIPOC + waste (W3)* over `NexaCare_MSA process.pdf`; then *Design-thinking ideation (W3)* on the top pain point.
+- **Run in Rose:** *Map and diagnose a process — SIPOC + waste (W3)* over `NexaCare_MSA process.pdf`; then *Design-thinking ideation (W3)* on the top pain point.
 - **Objective:** students can map a process, find waste, and move from pain point to prioritised solution.
-- **Facilitate:** does Mike's SIPOC match the real handoffs in the WBS? Which "Quick Win" would you actually run? The continuous-improvement retro clause supports the debrief milestone.
+- **Facilitate:** does Rose's SIPOC match the real handoffs in the WBS? Which "Quick Win" would you actually run? The continuous-improvement retro clause supports the debrief milestone.
 
 ### Week 4 — Data, AI & legal technology
 - **LPM focus:** personas & journeys, legal-tech procurement, **generative-AI governance**.
-- **Run in Mike:** *User-journey map for a stakeholder (W4)* (name a persona); build a *Plan on a page* for a quick win (clause template); then the governance activity below.
-- **Governance activity (the distinctive one):** have students run any prior Mike output through **review against the *GenAI in NSW legal practice* playbook**. The playbook encodes **SC Gen 23** (NSW Supreme Court, commenced 3 Feb 2025) and the **joint AI Statement / Solicitor's Guide** (6 Dec 2024). Key teaching point: SC Gen 23 requires that **every citation be verified and that the verification not be done by GenAI** — which is exactly why Mike routes verification to a human via the Verify page. Show the **audit log** and **cost tracking** as the governance evidence trail.
+- **Run in Rose:** *User-journey map for a stakeholder (W4)* (name a persona); build a *Plan on a page* for a quick win (clause template); then the governance activity below.
+- **Governance activity (the distinctive one):** have students run any prior Rose output through **review against the *GenAI in NSW legal practice* playbook**. The playbook encodes **SC Gen 23** (NSW Supreme Court, commenced 3 Feb 2025) and the **joint AI Statement / Solicitor's Guide** (6 Dec 2024). Key teaching point: SC Gen 23 requires that **every citation be verified and that the verification not be done by GenAI** — which is exactly why Rose routes verification to a human via the Verify page. Show the **audit log** and **cost tracking** as the governance evidence trail.
 - **Objective:** students can state the NSW rules, and can point to the specific tool controls that satisfy (or fail) them.
 - **Debate:** *should generative AI be allowed in delivering legal services?* — now grounded in a tool they have used and its actual guardrails.
 
 ### Week 7 — Demand management, right-sourcing & risk
 - **LPM focus:** disaggregation, ALSPs, commoditisation, risk & quality management.
-- **Run in Mike:** *Right-sourcing analysis (W7)* → produces the disaggregation register; reviewed automatically against the *Right-sourcing risk & quality gates* playbook. Pair with a *TSA review* tabular run.
+- **Run in Rose:** *Right-sourcing analysis (W7)* → produces the disaggregation register; reviewed automatically against the *Right-sourcing risk & quality gates* playbook. Pair with a *TSA review* tabular run.
 - **Objective:** students can decide keep/delegate/commoditise/outsource/automate for each task and defend it on risk, complexity and cost.
 - **Facilitate:** which tasks are safe to outsource, and which fail a quality gate? Connect to the billable-hour debate.
 
@@ -82,11 +82,11 @@ See the CX/EX deep dive in §5. For **ethics**, run *LPM ethics check (W8)* on a
 
 ### Week 9 — Transformation & change management
 - **LPM focus:** change management, Kotter, innovation.
-- **Run in Mike:** *Change plan — Kotter 8-step (W9)* for rolling out the client happy path or adopting Mike/LPM firm-wide; includes a resistance map keyed to the K&S partners. Stage ideas with the *Innovation one-pager* clause.
+- **Run in Rose:** *Change plan — Kotter 8-step (W9)* for rolling out the client happy path or adopting Rose/LPM firm-wide; includes a resistance map keyed to the K&S partners. Stage ideas with the *Innovation one-pager* clause.
 - **Objective:** students can build an eight-step change plan and anticipate resistance from named stakeholders.
 
 ### Week 10 — Group assessment
-- **Run in Mike:** *Group-assessment deliverable builder* assembles a group's analysis into a presentation-ready, export-ready pack (DOCX/PDF).
+- **Run in Rose:** *Group-assessment deliverable builder* assembles a group's analysis into a presentation-ready, export-ready pack (DOCX/PDF).
 
 ---
 
@@ -100,7 +100,7 @@ Six workflows plus a *Client & employee experience standards* playbook and two t
 4. **The team side (EX).** Run *Team experience (EX) & psychological-safety pulse* — uses the personas' wellbeing cues (Lily's over-commitment, Aisha's anxiety under pressure, David's rigidity, Tom's detail-miss risk). Then *Workload & wellbeing rebalance* to protect a sustainable pace while still meeting the deadline. Keep the framing supportive and non-clinical; the workflows are built to stay within a manager's remit.
 5. **Synthesis.** Run *Moments that matter — CX/EX map* to surface where client and employee experience reinforce or **conflict** (compressing the timetable pleases the client but strains the team) — the core Week-8 tension.
 
-**Facilitation prompts:** Can a strong culture prevent ethical breaches (Green)? Where did serving the client cost the team, and how would you redesign that moment? Which of Mike's own features support EX (the approval gate distributes accountability; the audit log protects the junior who flagged a risk)?
+**Facilitation prompts:** Can a strong culture prevent ethical breaches (Green)? Where did serving the client cost the team, and how would you redesign that moment? Which of Rose's own features support EX (the approval gate distributes accountability; the audit log protects the junior who flagged a risk)?
 
 **Assessment artefact:** a one-page "ideal happy path" (Week-8 activity) plus a short EX note on how the accelerated timetable was staffed — both producible with these workflows.
 

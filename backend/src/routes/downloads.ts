@@ -98,11 +98,11 @@ downloadsRouter.post("/export", requireAuthExport, async (req, res) => {
     const styled = await applyCitationStyle(db, userId, content, style);
     const out = await buildExport({ title, content: styled, format });
     const safeName =
-      (title || "mike-export")
+      (title || "rose-export")
         .replace(/[^a-zA-Z0-9 _-]/g, "")
         .trim()
         .replace(/\s+/g, "-")
-        .slice(0, 60) || "mike-export";
+        .slice(0, 60) || "rose-export";
     recordAuditExport({
       actorId: userId,
       eventType: "export",

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Check, Copy, Loader2, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { apiVerifyText } from "@/app/lib/mikeApi";
+import { apiVerifyText } from "@/app/lib/roseApi";
 import type { AssistantEvent, Citation, EditAnnotation } from "../shared/types";
 import { EditCard } from "./EditCard";
 import { PreResponseWrapper } from "./PreResponseWrapper";
@@ -33,7 +33,7 @@ interface Props {
     events?: AssistantEvent[];
     isStreaming?: boolean;
     isError?: boolean;
-    /** Human-readable error text rendered alongside the red Mike icon. */
+    /** Human-readable error text rendered alongside the red Rose icon. */
     errorMessage?: string;
     citations?: Citation[];
     citationStatus?: "started" | "partial" | "final";
@@ -112,7 +112,7 @@ interface Props {
 /**
  * Human-in-the-loop citation verification. The user opens the source (e.g.
  * AustLII) in a new tab and verifies the citation themselves, then records the
- * outcome. Nothing from the source is fetched by Mike — only the user's
+ * outcome. Nothing from the source is fetched by Rose — only the user's
  * verified / not-verified decision is captured.
  */
 function CitationVerificationCard({
