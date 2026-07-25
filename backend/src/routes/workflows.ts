@@ -771,6 +771,362 @@ workflowsRouter.post("/:workflowId/share", requireAuth, asyncRoute(async (req, r
   res.status(204).send();
 }));
 
+// ---------------------------------------------------------------------------
+// Blueprint / duplicate / conversational editing / pre-flight
+//
+//   GET  /workflows/:id/blueprint          — cached structured process spec
+//   POST /workflows/:id/blueprint          — (re)generate it
+//   POST /workflows/:id/duplicate          — user-owned editable copy
+//   POST /workflows/:id/edit-chat          — LLM-proposed revision
+//   POST /workflows/:id/preflight          — silent-failure gate for a run
+// ---------------------------------------------------------------------------
+
+/** Resolve a workflow for reading, covering both system and DB workflows. */
+async function resolveWorkflowSource(
+  workflowId: string,
+  userId: string,
+  userEmail: string | undefined,
+  db: Db,
+): Promise<{
+  source: import("../lib/workflows/blueprint").WorkflowSource;
+  ownerId: string | null;
+  allowEdit: boolean;
+} | null> {
+  const systemWorkflow = SYSTEM_WORKFLOWS.find((w) => w.id === workflowId);
+  if (systemWorkflow) {
+    return {
+      source: {
+        id: systemWorkflow.id,
+        title: systemWorkflow.metadata.title,
+        type: systemWorkflow.metadata.type,
+        prompt_md: systemWorkflow.skill_md,
+        columns_config: systemWorkflow.columns_config,
+      },
+      ownerId: null,
+      allowEdit: false,
+    };
+  }
+  const access = await resolveWorkflowAccess(workflowId, userId, userEmail, db);
+  if (!access) return null;
+  const w = access.workflow;
+  return {
+    source: {
+      id: w.id,
+      title: w.title ?? "Untitled workflow",
+      type: workflowTypeFrom(w.type),
+      prompt_md: (w.prompt_md as string | null) ?? null,
+      columns_config: w.columns_config ?? null,
+    },
+    ownerId: w.user_id ?? null,
+    allowEdit: access.allowEdit,
+  };
+}
+
+async function blueprintModel(userId: string, db: Db) {
+  const { getUserApiKeys } = await import("../lib/userApiKeys");
+  const { resolveModel, DEFAULT_MAIN_MODEL } = await import("../lib/llm");
+  return {
+    model: resolveModel(null, DEFAULT_MAIN_MODEL),
+    apiKeys: await getUserApiKeys(userId, db),
+  };
+}
+
+// GET /workflows/:workflowId/blueprint
+workflowsRouter.get(
+  "/:workflowId/blueprint",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const userId = res.locals.userId as string;
+    const userEmail = res.locals.userEmail as string | undefined;
+    const db = createServerSupabase();
+    const resolved = await resolveWorkflowSource(
+      req.params.workflowId,
+      userId,
+      userEmail,
+      db,
+    );
+    if (!resolved)
+      return void res.status(404).json({ detail: "Workflow not found" });
+
+    const { getOrCreateBlueprint } = await import("../lib/workflows/blueprint");
+    const { model, apiKeys } = await blueprintModel(userId, db);
+    const { blueprint, cached } = await getOrCreateBlueprint({
+      db,
+      userId,
+      ownerId: resolved.ownerId,
+      source: resolved.source,
+      model,
+      apiKeys,
+    });
+    res.json({ blueprint, cached });
+  }),
+);
+
+// POST /workflows/:workflowId/blueprint — force regeneration.
+workflowsRouter.post(
+  "/:workflowId/blueprint",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const userId = res.locals.userId as string;
+    const userEmail = res.locals.userEmail as string | undefined;
+    const db = createServerSupabase();
+    const resolved = await resolveWorkflowSource(
+      req.params.workflowId,
+      userId,
+      userEmail,
+      db,
+    );
+    if (!resolved)
+      return void res.status(404).json({ detail: "Workflow not found" });
+
+    const { getOrCreateBlueprint } = await import("../lib/workflows/blueprint");
+    const { model, apiKeys } = await blueprintModel(userId, db);
+    const { blueprint } = await getOrCreateBlueprint({
+      db,
+      userId,
+      ownerId: resolved.ownerId,
+      source: resolved.source,
+      model,
+      apiKeys,
+      force: true,
+    });
+    res.json({ blueprint, cached: false });
+  }),
+);
+
+// POST /workflows/:workflowId/duplicate { title? }
+// Works for system workflows too — that is the point: you cannot edit a
+// built-in workflow, so you take your own copy and edit that.
+workflowsRouter.post(
+  "/:workflowId/duplicate",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const userId = res.locals.userId as string;
+    const userEmail = res.locals.userEmail as string | undefined;
+    const db = createServerSupabase();
+    const resolved = await resolveWorkflowSource(
+      req.params.workflowId,
+      userId,
+      userEmail,
+      db,
+    );
+    if (!resolved)
+      return void res.status(404).json({ detail: "Workflow not found" });
+
+    const systemWorkflow = SYSTEM_WORKFLOWS.find(
+      (w) => w.id === req.params.workflowId,
+    );
+    const original = systemWorkflow
+      ? null
+      : ((
+          await db
+            .from("workflows")
+            .select("*")
+            .eq("id", req.params.workflowId)
+            .maybeSingle()
+        ).data as WorkflowRecord | null);
+
+    const requestedTitle = normalizeOptionalString(req.body?.title);
+    const title = (
+      requestedTitle ?? `${resolved.source.title} (copy)`
+    ).slice(0, 200);
+
+    const { data, error } = await db
+      .from("workflows")
+      .insert({
+        user_id: userId,
+        title,
+        type: resolved.source.type,
+        prompt_md: resolved.source.prompt_md,
+        columns_config: resolved.source.columns_config ?? null,
+        language:
+          systemWorkflow?.metadata.language ??
+          original?.language ??
+          DEFAULT_WORKFLOW_LANGUAGE,
+        practice:
+          systemWorkflow?.metadata.practice ??
+          original?.practice ??
+          DEFAULT_WORKFLOW_PRACTICE,
+        jurisdictions:
+          systemWorkflow?.metadata.jurisdictions ??
+          original?.jurisdictions ??
+          DEFAULT_WORKFLOW_JURISDICTIONS,
+      })
+      .select("*")
+      .single();
+    if (error || !data)
+      return void res
+        .status(500)
+        .json({ detail: error?.message ?? "Failed to duplicate workflow" });
+
+    // Carry the blueprint across — the copy has identical instructions, so
+    // the cached blueprint is still valid and the copy opens fully described
+    // rather than blank while it regenerates.
+    try {
+      const { readCachedBlueprint, workflowSourceHash, writeCachedBlueprint } =
+        await import("../lib/workflows/blueprint");
+      const hash = workflowSourceHash(resolved.source);
+      const existing = await readCachedBlueprint(
+        db,
+        resolved.source.id,
+        hash,
+      );
+      if (existing) {
+        const copySource = { ...resolved.source, id: data.id, title };
+        await writeCachedBlueprint(db, {
+          workflowId: data.id as string,
+          ownerId: userId,
+          blueprint: {
+            ...existing,
+            source_hash: workflowSourceHash(copySource),
+          },
+          sourceHash: workflowSourceHash(copySource),
+          model: "inherited",
+        });
+      }
+    } catch (err) {
+      console.error("[workflows/duplicate] blueprint copy failed", err);
+    }
+
+    res.status(201).json(
+      withWorkflowAccess(withDatabaseWorkflow(data as WorkflowRecord), {
+        allowEdit: true,
+        isOwner: true,
+      }),
+    );
+  }),
+);
+
+// POST /workflows/:workflowId/edit-chat { messages: [{role, content}] }
+// Returns a proposed revision. Nothing is saved until the caller PATCHes.
+workflowsRouter.post(
+  "/:workflowId/edit-chat",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const userId = res.locals.userId as string;
+    const userEmail = res.locals.userEmail as string | undefined;
+    const db = createServerSupabase();
+    const resolved = await resolveWorkflowSource(
+      req.params.workflowId,
+      userId,
+      userEmail,
+      db,
+    );
+    if (!resolved)
+      return void res.status(404).json({ detail: "Workflow not found" });
+    if (!resolved.allowEdit)
+      return void res.status(403).json({
+        detail:
+          "This workflow is read-only. Duplicate it first, then edit your copy.",
+      });
+
+    const messages = (Array.isArray(req.body?.messages) ? req.body.messages : [])
+      .map((m: unknown) => {
+        if (!m || typeof m !== "object") return null;
+        const r = m as Record<string, unknown>;
+        const content = typeof r.content === "string" ? r.content.trim() : "";
+        if (!content) return null;
+        return {
+          role: r.role === "assistant" ? ("assistant" as const) : ("user" as const),
+          content,
+        };
+      })
+      .filter(
+        (m: unknown): m is { role: "user" | "assistant"; content: string } => !!m,
+      );
+    if (messages.length === 0)
+      return void res.status(400).json({ detail: "messages is required" });
+
+    const { readCachedBlueprint, workflowSourceHash } = await import(
+      "../lib/workflows/blueprint"
+    );
+    const { proposeWorkflowEdit } = await import("../lib/workflows/editChat");
+    const { model, apiKeys } = await blueprintModel(userId, db);
+    const blueprint = await readCachedBlueprint(
+      db,
+      resolved.source.id,
+      workflowSourceHash(resolved.source),
+    );
+    const columns = Array.isArray(resolved.source.columns_config)
+      ? (resolved.source.columns_config as {
+          index: number;
+          name: string;
+          prompt: string;
+          format?: string;
+          type?: string;
+        }[])
+      : [];
+
+    const proposal = await proposeWorkflowEdit({
+      db,
+      userId,
+      title: resolved.source.title,
+      type: resolved.source.type,
+      promptMd: resolved.source.prompt_md,
+      columns,
+      blueprint,
+      messages,
+      model,
+      apiKeys,
+    });
+    res.json(proposal);
+  }),
+);
+
+// POST /workflows/:workflowId/preflight { document_ids?, request?, project_id? }
+workflowsRouter.post(
+  "/:workflowId/preflight",
+  requireAuth,
+  asyncRoute(async (req, res) => {
+    const userId = res.locals.userId as string;
+    const userEmail = res.locals.userEmail as string | undefined;
+    const db = createServerSupabase();
+    const resolved = await resolveWorkflowSource(
+      req.params.workflowId,
+      userId,
+      userEmail,
+      db,
+    );
+    if (!resolved)
+      return void res.status(404).json({ detail: "Workflow not found" });
+
+    const { getOrCreateBlueprint } = await import("../lib/workflows/blueprint");
+    const { runPreflight } = await import("../lib/workflows/preflight");
+    const { filterAccessibleDocumentIds } = await import("../lib/access");
+    const { model, apiKeys } = await blueprintModel(userId, db);
+
+    const { blueprint } = await getOrCreateBlueprint({
+      db,
+      userId,
+      ownerId: resolved.ownerId,
+      source: resolved.source,
+      model,
+      apiKeys,
+    });
+    const documentIds = await filterAccessibleDocumentIds(
+      (Array.isArray(req.body?.document_ids) ? req.body.document_ids : []).filter(
+        (v: unknown): v is string => typeof v === "string",
+      ),
+      userId,
+      userEmail,
+      db,
+    );
+    const preflight = await runPreflight({
+      db,
+      userId,
+      blueprint,
+      documentIds,
+      request:
+        typeof req.body?.request === "string"
+          ? req.body.request
+          : `Run the workflow "${resolved.source.title}".`,
+      model,
+      apiKeys,
+    });
+    res.json({ preflight, blueprint });
+  }),
+);
+
 workflowsRouter.use(
   (err: unknown, _req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) return next(err);
@@ -788,9 +1144,10 @@ workflowsRouter.post("/:workflowId/compile", requireAuth, asyncRoute(
   async (req, res) => {
     const userId = res.locals.userId as string;
     const db = createServerSupabase();
+    // NOTE: the column is `prompt_md`; `skill_md` is the API-facing alias.
     const { data: workflow } = await db
       .from("workflows")
-      .select("id, title, skill_md")
+      .select("id, title, prompt_md")
       .eq("id", req.params.workflowId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -800,7 +1157,7 @@ workflowsRouter.post("/:workflowId/compile", requireAuth, asyncRoute(
     const instructions =
       typeof req.body?.instructions === "string" && req.body.instructions.trim()
         ? req.body.instructions.trim()
-        : `Workflow "${workflow.title}":\n${workflow.skill_md ?? ""}`;
+        : `Workflow "${workflow.title}":\n${workflow.prompt_md ?? ""}`;
     const { planRun } = await import("../lib/agents/planner");
     const { getUserApiKeys } = await import("../lib/userApiKeys");
     const { resolveModel, DEFAULT_MAIN_MODEL } = await import("../lib/llm");
@@ -819,62 +1176,123 @@ workflowsRouter.post("/:workflowId/compile", requireAuth, asyncRoute(
   },
 ));
 
+// POST /workflows/:workflowId/run
+//   { request?, document_ids?, project_id?, preflight?, force? }
+//
+// The run is created from the workflow's BLUEPRINT — the same steps,
+// objectives and acceptance criteria the user reviewed on the workflow page —
+// so what runs is what was shown. Before anything executes we re-assess the
+// silent-failure risk against the documents actually attached; if that comes
+// back high the run is parked at the gate (status 'paused') and the caller
+// must confirm with force=true, or stop and edit the workflow.
 workflowsRouter.post("/:workflowId/run", requireAuth, asyncRoute(
   async (req, res) => {
     const userId = res.locals.userId as string;
     const userEmail = res.locals.userEmail as string | undefined;
     const db = createServerSupabase();
-    const { data: workflow } = await db
-      .from("workflows")
-      .select("id, title, skill_md, plan_template")
-      .eq("id", req.params.workflowId)
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (!workflow)
-      return void res.status(404).json({ detail: "Workflow not found" });
-    if (!workflow.plan_template)
-      return void res.status(400).json({
-        detail:
-          "This workflow has no plan template. Compile it first (or apply it in Assistant as a skill workflow).",
-      });
-
-    const { sanitizePlan } = await import("../lib/agents/planner");
-    const { filterAccessibleDocumentIds } = await import("../lib/access");
-    const { executeRunInBackground } = await import("../lib/agents/executor");
-    const { getJadeAccessApproved } = await import("../lib/appSettings");
-
-    const plan = sanitizePlan(
-      workflow.plan_template,
-      workflow.title as string,
-      await getJadeAccessApproved(),
+    const resolved = await resolveWorkflowSource(
+      req.params.workflowId,
+      userId,
+      userEmail,
+      db,
     );
+    if (!resolved)
+      return void res.status(404).json({ detail: "Workflow not found" });
+
+    const { getOrCreateBlueprint, blueprintToPlan } = await import(
+      "../lib/workflows/blueprint"
+    );
+    const { runPreflight } = await import("../lib/workflows/preflight");
+    const { filterAccessibleDocumentIds, checkProjectAccess } = await import(
+      "../lib/access"
+    );
+    const { getJadeAccessApproved } = await import("../lib/appSettings");
+    const { model, apiKeys } = await blueprintModel(userId, db);
+
+    const projectId =
+      typeof req.body?.project_id === "string" ? req.body.project_id : null;
+    if (projectId) {
+      const { can } = await import("../lib/rbac");
+      const access = await checkProjectAccess(projectId, userId, userEmail, db);
+      if (!access.ok || !can(access.role, "run"))
+        return void res
+          .status(403)
+          .json({ detail: "No run access to that project" });
+    }
+
     const request =
       typeof req.body?.request === "string" && req.body.request.trim()
         ? req.body.request.trim()
-        : `Run the workflow "${workflow.title}".`;
-    const documentIds = Array.isArray(req.body?.document_ids)
-      ? await filterAccessibleDocumentIds(
-          (req.body.document_ids as unknown[]).filter(
-            (v): v is string => typeof v === "string",
-          ),
-          userId,
-          userEmail,
-          db,
-        )
-      : [];
+        : `Run the workflow "${resolved.source.title}".`;
+    const documentIds = await filterAccessibleDocumentIds(
+      (Array.isArray(req.body?.document_ids) ? req.body.document_ids : []).filter(
+        (v: unknown): v is string => typeof v === "string",
+      ),
+      userId,
+      userEmail,
+      db,
+    );
+
+    const { blueprint } = await getOrCreateBlueprint({
+      db,
+      userId,
+      ownerId: resolved.ownerId,
+      source: resolved.source,
+      model,
+      apiKeys,
+    });
+
+    // Re-assess against the documents actually attached, unless the caller
+    // already ran the gate and is passing its result back.
+    const supplied =
+      req.body?.preflight && typeof req.body.preflight === "object"
+        ? (req.body.preflight as Record<string, unknown>)
+        : null;
+    const preflight =
+      supplied && supplied.version === 1
+        ? (supplied as unknown as import("../lib/workflows/preflight").PreflightAssessment)
+        : await runPreflight({
+            db,
+            userId,
+            blueprint,
+            documentIds,
+            request,
+            model,
+            apiKeys,
+          });
+
+    const forced = req.body?.force === true;
+    const blocked = preflight.requires_confirmation && !forced;
+
+    const plan = blueprintToPlan(
+      blueprint,
+      resolved.source.title,
+      resolved.source.prompt_md,
+      await getJadeAccessApproved(),
+    );
 
     const { data: created, error } = await db
       .from("agent_runs")
       .insert({
         owner_id: userId,
+        project_id: projectId,
         kind: "workflow",
-        status: "awaiting_approval",
-        title: `${workflow.title}`,
+        // 'paused' = held at the silent-failure gate awaiting the user's
+        // decision; 'awaiting_approval' = normal plan approval.
+        status: blocked ? "paused" : "awaiting_approval",
+        title: resolved.source.title,
         request,
         model: null,
         plan,
+        blueprint,
+        preflight: {
+          ...preflight,
+          ...(forced
+            ? { decision: "continue", decided_at: new Date().toISOString() }
+            : {}),
+        },
         document_ids: documentIds,
-        workflow_id: workflow.id,
+        workflow_id: resolved.source.id,
       })
       .select("id")
       .single();
@@ -882,16 +1300,25 @@ workflowsRouter.post("/:workflowId/run", requireAuth, asyncRoute(
       return void res
         .status(500)
         .json({ detail: error?.message ?? "insert failed" });
-    const rows = plan.steps.map((s) => ({
+
+    await db.from("agent_steps").insert(
+      plan.steps.map((s) => ({
+        run_id: created.id,
+        position: s.position,
+        depends_on: s.depends_on,
+        role: s.role,
+        instruction: s.instruction,
+        tool_allowlist: s.tool_allowlist,
+      })),
+    );
+
+    res.status(201).json({
       run_id: created.id,
-      position: s.position,
-      depends_on: s.depends_on,
-      role: s.role,
-      instruction: s.instruction,
-      tool_allowlist: s.tool_allowlist,
-    }));
-    await db.from("agent_steps").insert(rows);
-    void executeRunInBackground; // execution starts on approval via /agents/:id/approve
-    res.status(201).json({ run_id: created.id, plan });
+      plan,
+      blueprint,
+      preflight,
+      // The caller must resolve the gate before the plan can be approved.
+      gated: blocked,
+    });
   },
 ));

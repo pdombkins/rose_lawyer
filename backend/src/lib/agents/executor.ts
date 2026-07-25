@@ -21,6 +21,12 @@ import { notify } from "../notifications";
 import { recordAudit } from "../audit";
 import { buildRolePrompt } from "./rolePrompts";
 import { publishRunEvent } from "./events";
+import {
+    reviewStepOutput,
+    reworkPreamble,
+    type PartnerReview,
+} from "./partnerReview";
+import type { BlueprintStep, WorkflowBlueprint } from "../workflows/blueprint";
 import type { AgentRole } from "./types";
 
 type Db = ReturnType<typeof createServerSupabase>;
@@ -47,7 +53,39 @@ type RunRow = {
     request: string;
     model: string | null;
     document_ids: string[] | null;
+    blueprint: unknown;
 };
+
+/** Fallback criteria for runs with no blueprint (ad-hoc agent runs). */
+function implicitBlueprintStep(step: StepRow): BlueprintStep {
+    return {
+        position: step.position,
+        depends_on: step.depends_on,
+        role: step.role,
+        name: `Step ${step.position}`,
+        objective: step.instruction.split("\n")[0].slice(0, 300),
+        inputs: [],
+        outputs: [],
+        quality_criteria: [
+            {
+                id: `S${step.position}-Q1`,
+                applies_to: "output",
+                criterion:
+                    "Every material statement is traceable to a specific passage in a source document or a cited authority, with operative language quoted verbatim rather than paraphrased.",
+                why: "Untraceable statements are the primary vector for silent AI failure.",
+            },
+            {
+                id: `S${step.position}-Q2`,
+                applies_to: "output",
+                criterion:
+                    "Anything not found in the sources is reported as not found, rather than filled in with a plausible value.",
+                why: "Confabulated specifics (dates, thresholds, notice periods) read as fact and are not detectable on the face of the output.",
+            },
+        ],
+        silent_failure: { risk: "medium", modes: [], mitigation: "" },
+        max_rework: 1,
+    };
+}
 
 const MAX_CONCURRENT = 3;
 const RUN_CONTEXT_BUDGET = 24_000; // chars (~8k tokens) of shared context
@@ -87,7 +125,7 @@ async function executeRun(runId: string): Promise<void> {
     const { data: runData } = await db
         .from("agent_runs")
         .select(
-            "id, owner_id, project_id, kind, status, title, request, model, document_ids",
+            "id, owner_id, project_id, kind, status, title, request, model, document_ids, blueprint",
         )
         .eq("id", runId)
         .single();
@@ -109,6 +147,13 @@ async function executeRun(runId: string): Promise<void> {
 
     const apiKeys = await getUserApiKeys(run.owner_id, db);
     const model = resolveModel(run.model, DEFAULT_MAIN_MODEL);
+    const blueprint =
+        run.blueprint && typeof run.blueprint === "object"
+            ? (run.blueprint as WorkflowBlueprint)
+            : null;
+    const blueprintByPosition = new Map(
+        (blueprint?.steps ?? []).map((s) => [s.position, s]),
+    );
     const orgContext = await getOrgContextForUser(
         run.owner_id,
         db,
@@ -205,6 +250,9 @@ async function executeRun(runId: string): Promise<void> {
                     docIndex,
                     docStore,
                     runContext: runContext(),
+                    blueprintStep:
+                        blueprintByPosition.get(step.position) ??
+                        implicitBlueprintStep(step),
                 }).then(
                     (output) => {
                         step.status = "completed";
@@ -259,6 +307,7 @@ async function runStep(
         docIndex: DocIndex;
         docStore: DocStore;
         runContext: string;
+        blueprintStep: BlueprintStep;
     },
 ): Promise<string> {
     await db
@@ -288,19 +337,10 @@ async function runStep(
     const docAvailability = Object.entries(ctx.docIndex).map(
         ([doc_id, info]) => ({ doc_id, filename: info.filename }),
     );
-    const userContent = [
-        `RUN REQUEST:\n${run.request}`,
-        docAvailability.length
-            ? `AVAILABLE DOCUMENTS:\n${docAvailability
-                  .map((d) => `- ${d.doc_id}: ${d.filename}`)
-                  .join("\n")}`
-            : null,
-        `YOUR STEP (${step.role}):\n${step.instruction}`,
-    ]
-        .filter(Boolean)
-        .join("\n\n");
 
     // Capture streamed deltas for live subscribers; discard SSE plumbing.
+    // Reasoning is forwarded too so the run page can show the model's
+    // thinking live rather than only after the step lands.
     const write = (s: string) => {
         const m = s.match(/^data: (.*)\n\n$/s);
         if (!m) return;
@@ -308,7 +348,7 @@ async function runStep(
             const ev = JSON.parse(m[1]) as {
                 type?: string;
                 delta?: string;
-                content?: string;
+                text?: string;
             };
             if (ev.type === "content_delta" && typeof ev.delta === "string") {
                 publishRunEvent({
@@ -317,37 +357,132 @@ async function runStep(
                     position: step.position,
                     delta: ev.delta,
                 });
+            } else if (
+                ev.type === "reasoning_delta" &&
+                typeof ev.text === "string"
+            ) {
+                publishRunEvent({
+                    type: "agent_step_reasoning",
+                    runId: run.id,
+                    position: step.position,
+                    delta: ev.text,
+                });
             }
         } catch {
             /* non-JSON payloads ignored */
         }
     };
 
-    const { fullText, events } = await runLLMStream({
-        apiMessages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-        ],
-        docStore: ctx.docStore,
-        docIndex: ctx.docIndex,
-        userId: run.owner_id,
-        db,
-        write,
-        includeResearchTools: true,
-        model: ctx.model,
-        apiKeys: ctx.apiKeys,
-        chatId: null,
-        costSource: "agent_step",
-        projectId: run.project_id,
-        toolAllowlist: step.tool_allowlist,
-    });
+    // ---- work → senior-partner review → (rework) loop -----------------------
+    const maxAttempts = 1 + Math.max(0, ctx.blueprintStep.max_rework);
+    const reviews: PartnerReview[] = [];
+    let fullText = "";
+    let lastEvents: unknown[] = [];
+    let reworkNote: string | null = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const userContent = [
+            `RUN REQUEST:\n${run.request}`,
+            docAvailability.length
+                ? `AVAILABLE DOCUMENTS:\n${docAvailability
+                      .map((d) => `- ${d.doc_id}: ${d.filename}`)
+                      .join("\n")}`
+                : null,
+            `YOUR STEP (${step.role}):\n${step.instruction}`,
+            reworkNote,
+        ]
+            .filter(Boolean)
+            .join("\n\n");
+
+        const result = await runLLMStream({
+            apiMessages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userContent },
+            ],
+            docStore: ctx.docStore,
+            docIndex: ctx.docIndex,
+            userId: run.owner_id,
+            db,
+            write,
+            includeResearchTools: true,
+            model: ctx.model,
+            apiKeys: ctx.apiKeys,
+            chatId: null,
+            costSource: "agent_step",
+            projectId: run.project_id,
+            toolAllowlist: step.tool_allowlist,
+        });
+        fullText = result.fullText;
+        lastEvents = result.events ?? [];
+
+        publishRunEvent({
+            type: "agent_step_review_start",
+            runId: run.id,
+            position: step.position,
+        });
+        const review = await reviewStepOutput({
+            db,
+            userId: run.owner_id,
+            projectId: run.project_id,
+            step: ctx.blueprintStep,
+            instruction: step.instruction,
+            output: fullText,
+            attempt,
+            previousRework: reviews[reviews.length - 1]?.rework_instruction ?? null,
+            model: ctx.model,
+            apiKeys: ctx.apiKeys,
+        });
+        reviews.push(review);
+
+        // Persist after every attempt so a page open mid-rework shows the
+        // adjudication that triggered it, not a blank step.
+        await db
+            .from("agent_steps")
+            .update({
+                attempt,
+                review: reviews,
+                output_text: fullText,
+                output: { events: lastEvents.slice(0, 120) },
+            })
+            .eq("id", step.id);
+        publishRunEvent({
+            type: "agent_step_review_done",
+            runId: run.id,
+            position: step.position,
+            status: review.decision,
+            payload: {
+                attempt,
+                reason: review.reason,
+                inference: review.inference.level,
+            },
+        });
+        recordAudit({
+            actorId: run.owner_id,
+            eventType: "agent_step_review",
+            projectId: run.project_id,
+            resourceType: "agent_run",
+            resourceId: run.id,
+            detail: {
+                position: step.position,
+                attempt,
+                decision: review.decision,
+                inference: review.inference.level,
+            },
+        });
+
+        if (review.decision === "accept") break;
+        if (attempt === maxAttempts) break;
+        reworkNote = reworkPreamble(review);
+    }
 
     await db
         .from("agent_steps")
         .update({
             status: "completed",
             output_text: fullText,
-            output: { events: (events ?? []).slice(0, 50) },
+            output: { events: lastEvents.slice(0, 120) },
+            review: reviews,
+            attempt: reviews.length || 1,
             finished_at: new Date().toISOString(),
         })
         .eq("id", step.id);
@@ -365,6 +500,14 @@ async function runStep(
         resourceId: run.id,
         detail: { position: step.position, role: step.role, status: "done" },
     });
+
+    // If the partner never accepted, the downstream steps must know: the
+    // handoff carries the unresolved objections rather than presenting the
+    // output as clean.
+    const last = reviews[reviews.length - 1];
+    if (last && last.decision === "rework") {
+        return `${fullText}\n\n[SENIOR-PARTNER REVIEW — NOT ACCEPTED after ${reviews.length} attempt(s). Outstanding objections: ${last.reason} ${last.rework_instruction ?? ""} Treat the above output as provisional and re-check anything you rely on.]`;
+    }
     return fullText;
 }
 

@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { Document, Workflow } from "../shared/types";
-import { createTabularReview } from "@/app/lib/roseApi";
+import {
+    createTabularReview,
+    runWorkflow,
+    workflowPreflight,
+    type PreflightAssessment,
+} from "@/app/lib/roseApi";
 import { useRouter } from "next/navigation";
 import { useDirectoryData } from "../shared/useDirectoryData";
 import { FileDirectory } from "../shared/FileDirectory";
@@ -13,6 +18,7 @@ import { ModalSegmentedToggle } from "../modals/ModalSegmentedToggle";
 import { ModalSelect } from "../modals/ModalSelect";
 import { ModalTextarea } from "../modals/ModalTextarea";
 import { WorkflowPickerContent } from "./WorkflowPickerContent";
+import { PreflightGateBody } from "./PreflightGate";
 import { workflowDetailPath } from "./workflowRoutes";
 
 interface Props {
@@ -21,6 +27,8 @@ interface Props {
     onClose: () => void;
     skipSelect?: boolean;
 }
+
+type Screen = "select" | "details" | "documents" | "preflight";
 
 function SelectedWorkflowSummary({ workflow }: { workflow: Workflow }) {
     return (
@@ -39,7 +47,7 @@ function SelectedWorkflowSummary({ workflow }: { workflow: Workflow }) {
 // UseWorkflowModal
 // ---------------------------------------------------------------------------
 export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = false }: Props) {
-    const [screen, setScreen] = useState<"select" | "details" | "documents">("select");
+    const [screen, setScreen] = useState<Screen>("select");
     const [selected, setSelected] = useState<Workflow | null>(workflow);
     const [listSearch, setListSearch] = useState("");
 
@@ -51,6 +59,17 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
     const [selectedDocuments, setSelectedDocuments] = useState<Document[]>([]);
     const [assistantPrompt, setAssistantPrompt] = useState("");
     const [saving, setSaving] = useState(false);
+    // How an assistant workflow executes. "workflow" runs it through the agent
+    // runtime — process map, live step position, per-step senior-partner
+    // review and a completion report. "chat" is the older behaviour: apply the
+    // workflow as a skill inside an ordinary assistant chat.
+    const [runMode, setRunMode] = useState<"workflow" | "chat">("workflow");
+
+    // Pre-flight gate — assesses the documents actually attached against the
+    // workflow's steps before anything runs (see PreflightGate.tsx).
+    const [preflight, setPreflight] = useState<PreflightAssessment | null>(null);
+    const [preflightRunning, setPreflightRunning] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const router = useRouter();
     const { saveChat, setNewChatMessages } = useChatHistoryContext();
@@ -82,6 +101,10 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
         setSelectedProjectId(null);
         setSelectedDocuments([]);
         setAssistantPrompt("");
+        setRunMode("workflow");
+        setPreflight(null);
+        setPreflightRunning(false);
+        setError(null);
     }
 
     function handleClose() {
@@ -97,6 +120,79 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
     // ---------------------------------------------------------------------------
     // Handlers
     // ---------------------------------------------------------------------------
+
+    /**
+     * Step into the gate. The assessment reads the attached documents and
+     * re-scores each workflow step for silent-failure risk against them, so it
+     * runs here rather than on the documents screen — we need the final
+     * selection, and it costs a model call.
+     */
+    async function handleRunPreflight() {
+        setScreen("preflight");
+        setPreflightRunning(true);
+        setError(null);
+        setPreflight(null);
+        try {
+            const { preflight: assessment } = await workflowPreflight(wf.id, {
+                document_ids: selectedDocuments.map((d) => d.id),
+                request: assistantPrompt.trim() || undefined,
+            });
+            setPreflight(assessment);
+        } catch (e) {
+            setError(
+                e instanceof Error
+                    ? e.message
+                    : "The pre-flight check could not be completed.",
+            );
+            // Fail open but visibly: the user can still proceed, and is told
+            // the check didn't run rather than being shown a false all-clear.
+            setPreflight({
+                version: 1,
+                overall_risk: "medium",
+                requires_confirmation: false,
+                summary:
+                    "The pre-flight check could not be completed, so the documents have not been assessed against this workflow's steps. Treat the outputs with extra scrutiny.",
+                findings: [],
+                documents: [],
+                assessed_at: new Date().toISOString(),
+            });
+        } finally {
+            setPreflightRunning(false);
+        }
+    }
+
+    /** "Stop and edit the workflow" — nothing has run. */
+    function handleStopAndEdit() {
+        const path = workflowDetailPath(wf);
+        handleClose();
+        router.push(path);
+    }
+
+    /**
+     * Assistant workflows execute through the agent runtime, so the run gets
+     * the process map, live step position, expanded reasoning, the
+     * senior-partner review gate on every step, and the completion report.
+     */
+    async function handleRunAsWorkflow() {
+        setSaving(true);
+        setError(null);
+        try {
+            const { run_id } = await runWorkflow(wf.id, {
+                request: assistantPrompt.trim() || undefined,
+                document_ids: selectedDocuments.map((d) => d.id),
+                project_id: inProject ? selectedProjectId : null,
+                preflight: preflight ?? undefined,
+                force: true, // the user has just answered the gate
+            });
+            handleClose();
+            router.push(`/agents?run=${run_id}`);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Could not start the run");
+        } finally {
+            setSaving(false);
+        }
+    }
+
     async function handleStartChat() {
         setSaving(true);
         try {
@@ -176,6 +272,12 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
                   },
               ];
 
+    const screenLabel =
+        screen === "details"
+            ? "Details"
+            : screen === "documents"
+              ? "Attach Documents"
+              : "Pre-flight check";
     const breadcrumbs =
         screen === "select"
             ? ["Workflows", "Select workflow"]
@@ -189,8 +291,8 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
                       Workflows
                   </button>,
                   wf.metadata.title,
-                  wf.metadata.type === "assistant" ? "New Chat" : "New Review",
-                  screen === "details" ? "Details" : "Attach Documents",
+                  wf.metadata.type === "assistant" ? "New Run" : "New Review",
+                  screenLabel,
               ];
 
     const selectPageAction = () => {
@@ -219,11 +321,26 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
                           onClick: () => setScreen("select"),
                           disabled: saving,
                       }
-                      : {
-                          label: "Back",
-                          onClick: () => setScreen("details"),
-                          disabled: saving,
-                      }
+                      : screen === "documents"
+                        ? {
+                            label: "Back",
+                            onClick: () => setScreen("details"),
+                            disabled: saving,
+                        }
+                        : {
+                            // At the gate the alternative to continuing is not
+                            // "back" — it's stopping and fixing the workflow.
+                            label: preflight?.requires_confirmation
+                                ? "Stop & edit workflow"
+                                : "Back",
+                            onClick: preflight?.requires_confirmation
+                                ? handleStopAndEdit
+                                : () => setScreen("documents"),
+                            disabled: saving || preflightRunning,
+                            variant: preflight?.requires_confirmation
+                                ? ("danger" as const)
+                                : undefined,
+                        }
             }
             primaryAction={
                 screen === "select"
@@ -238,20 +355,43 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
                             disabled:
                                 saving || (inProject && !selectedProjectId),
                         }
+                    : screen === "documents"
+                      ? {
+                            label: "Run pre-flight check",
+                            onClick: () => void handleRunPreflight(),
+                            disabled:
+                                saving ||
+                                (inProject && !selectedProjectId) ||
+                                (wf.metadata.type === "tabular" &&
+                                    selectedDocuments.length === 0),
+                        }
                     : wf.metadata.type === "assistant"
                       ? {
-                            label: saving ? "Starting…" : "Start Chat",
-                            onClick: handleStartChat,
-                            disabled:
-                                saving || (inProject && !selectedProjectId),
+                            label: saving
+                                ? "Starting…"
+                                : preflight?.requires_confirmation
+                                  ? "Continue anyway"
+                                  : runMode === "workflow"
+                                    ? "Run workflow"
+                                    : "Start chat",
+                            onClick:
+                                runMode === "workflow"
+                                    ? () => void handleRunAsWorkflow()
+                                    : handleStartChat,
+                            disabled: saving || preflightRunning || !preflight,
                         }
                       : {
-                            label: saving ? "Creating…" : "Create Review",
+                            label: saving
+                                ? "Creating…"
+                                : preflight?.requires_confirmation
+                                  ? "Continue anyway"
+                                  : "Create Review",
                             onClick: handleCreateReview,
                             disabled:
                                 saving ||
-                                selectedDocuments.length === 0 ||
-                                (inProject && !selectedProjectId),
+                                preflightRunning ||
+                                !preflight ||
+                                selectedDocuments.length === 0,
                         }
             }
             cancelAction={false}
@@ -319,6 +459,31 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
 
                         {wf.metadata.type === "assistant" && (
                             <div>
+                                <ModalFieldLabel as="p">Run as</ModalFieldLabel>
+                                <ModalSegmentedToggle
+                                    value={runMode}
+                                    onChange={setRunMode}
+                                    options={[
+                                        {
+                                            value: "workflow" as const,
+                                            label: "Guided workflow",
+                                        },
+                                        {
+                                            value: "chat" as const,
+                                            label: "Assistant chat",
+                                        },
+                                    ]}
+                                />
+                                <p className="mt-1.5 text-[11px] leading-snug text-gray-500">
+                                    {runMode === "workflow"
+                                        ? "Runs the workflow's defined steps, shows you where it's up to, has a senior-partner review check each step's output against its acceptance criteria, and produces a process report at the end."
+                                        : "Applies the workflow as instructions inside an ordinary chat. Faster and more flexible, but there is no step-by-step review or process report."}
+                                </p>
+                            </div>
+                        )}
+
+                        {wf.metadata.type === "assistant" && (
+                            <div>
                                 <ModalFieldLabel htmlFor="workflow-additional-message">
                                     Additional message
                                 </ModalFieldLabel>
@@ -348,6 +513,21 @@ export function UseWorkflowModal({ workflows, workflow, onClose, skipSelect = fa
                             showTabs={!inProject}
                         />
                     </div>
+                </div>
+            )}
+
+            {/* ── PRE-FLIGHT GATE ── */}
+            {screen === "preflight" && (
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                    {error && (
+                        <p className="mb-3 rounded-md bg-red-50 p-2.5 text-xs text-red-700">
+                            {error}
+                        </p>
+                    )}
+                    <PreflightGateBody
+                        assessment={preflight}
+                        running={preflightRunning}
+                    />
                 </div>
             )}
         </Modal>

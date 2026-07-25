@@ -13,6 +13,8 @@ export type AuditEventType =
     | "doc_download"
     | "doc_edit"
     | "agent_step"
+    /** Senior-partner adjudication of a step output against its criteria. */
+    | "agent_step_review"
     | "share"
     | "export"
     | "member_change";

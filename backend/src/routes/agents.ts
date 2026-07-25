@@ -212,17 +212,99 @@ agentsRouter.get("/:id", requireAuth, async (req, res) => {
   const { data: steps } = await db
     .from("agent_steps")
     .select(
-      "position, depends_on, role, instruction, status, output_text, output, started_at, finished_at",
+      "position, depends_on, role, instruction, status, output_text, output, review, attempt, started_at, finished_at",
     )
     .eq("run_id", req.params.id)
     .order("position", { ascending: true });
   // Summarise which knowledge sources each step actually used, from the
-  // persisted tool events — so the UI can show "what this agent relied on".
+  // persisted tool events — so the UI can show "what this agent relied on" —
+  // and surface the model's reasoning trace plus the senior-partner
+  // adjudication, which the run page shows expanded by default.
+  const { reasoningOf, reviewsOf } = await import("../lib/agents/report");
   const withSources = (steps ?? []).map((s) => {
-    const { output, ...rest } = s as Record<string, unknown>;
-    return { ...rest, sources: summariseStepSources(output) };
+    const { output, review, ...rest } = s as Record<string, unknown>;
+    return {
+      ...rest,
+      sources: summariseStepSources(output),
+      reasoning: reasoningOf(output),
+      reviews: reviewsOf(review),
+    };
   });
   res.json({ run, steps: withSources });
+});
+
+// GET /agents/:id/report — the completion report: every step, its reasoning,
+// the sources it relied on, the senior-partner adjudication and the extent of
+// inference. Assembled from persisted data only.
+agentsRouter.get("/:id/report", requireAuth, async (req, res) => {
+  const db = createServerSupabase();
+  const { data: run } = await db
+    .from("agent_runs")
+    .select(
+      "id, title, request, status, model, workflow_id, blueprint, preflight, started_at, finished_at",
+    )
+    .eq("id", req.params.id)
+    .eq("owner_id", res.locals.userId)
+    .maybeSingle();
+  if (!run) return void res.status(404).json({ detail: "Run not found" });
+  const { data: steps } = await db
+    .from("agent_steps")
+    .select(
+      "position, depends_on, role, instruction, status, output_text, output, review, attempt, started_at, finished_at",
+    )
+    .eq("run_id", req.params.id)
+    .order("position", { ascending: true });
+
+  const { buildRunReport, renderReportMarkdown, renderRunOutput } = await import(
+    "../lib/agents/report"
+  );
+  const report = buildRunReport({
+    run: run as Parameters<typeof buildRunReport>[0]["run"],
+    steps: (steps ?? []) as Parameters<typeof buildRunReport>[0]["steps"],
+  });
+  res.json({
+    report,
+    markdown: renderReportMarkdown(report),
+    output: renderRunOutput(report),
+  });
+});
+
+// POST /agents/:id/preflight-decision { decision: "continue" | "stopped" }
+// Resolves the pre-run silent-failure gate. "continue" releases the run to
+// normal plan approval; "stopped" cancels it so the user can go and edit the
+// workflow. Nothing has executed either way.
+agentsRouter.post("/:id/preflight-decision", requireAuth, async (req, res) => {
+  const db = createServerSupabase();
+  const decision = req.body?.decision === "continue" ? "continue" : "stopped";
+  const { data: run } = await db
+    .from("agent_runs")
+    .select("id, status, preflight")
+    .eq("id", req.params.id)
+    .eq("owner_id", res.locals.userId)
+    .maybeSingle();
+  if (!run) return void res.status(404).json({ detail: "Run not found" });
+  if (run.status !== "paused")
+    return void res
+      .status(400)
+      .json({ detail: `Run is ${run.status}, not at the pre-flight gate` });
+
+  const preflight = {
+    ...(run.preflight && typeof run.preflight === "object" ? run.preflight : {}),
+    decision,
+    decided_at: new Date().toISOString(),
+  };
+  const { error } = await db
+    .from("agent_runs")
+    .update({
+      preflight,
+      status: decision === "continue" ? "awaiting_approval" : "cancelled",
+      ...(decision === "stopped"
+        ? { finished_at: new Date().toISOString() }
+        : {}),
+    })
+    .eq("id", run.id);
+  if (error) return void res.status(500).json({ detail: error.message });
+  res.json({ ok: true, status: decision === "continue" ? "awaiting_approval" : "cancelled" });
 });
 
 /** Compact "sources used" summary derived from a step's persisted events. */

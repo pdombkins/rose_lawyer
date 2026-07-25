@@ -10,6 +10,10 @@ export type AgentEvent = {
         | "agent_status"
         | "agent_step_start"
         | "agent_step_delta"
+        /** Model reasoning trace, streamed live so the run page can show it. */
+        | "agent_step_reasoning"
+        | "agent_step_review_start"
+        | "agent_step_review_done"
         | "agent_step_done"
         | "agent_done"
         | "agent_error";

@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import {
     Check,
     ChevronDown,
+    Copy,
     Download,
     Globe,
     Pencil,
@@ -19,12 +20,17 @@ import {
     deleteWorkflowShare,
     deleteWorkflow,
     getWorkflow,
+    getWorkflowBlueprint,
     listWorkflowShares,
     lookupUserByEmail,
+    regenerateWorkflowBlueprint,
     shareWorkflow,
     updateWorkflow,
     type ProjectPeople,
+    type WorkflowBlueprint,
 } from "@/app/lib/roseApi";
+import { WorkflowBlueprintPanel } from "@/app/components/workflows/WorkflowBlueprintPanel";
+import { WorkflowEditChatModal } from "@/app/components/workflows/WorkflowEditChatModal";
 import { UseWorkflowModal } from "@/app/components/workflows/UseWorkflowModal";
 import { WFEditColumnModal } from "@/app/components/workflows/WFEditColumnModal";
 import { WFColumnViewModal } from "@/app/components/workflows/WFColumnViewModal";
@@ -124,6 +130,16 @@ export function WorkflowDetailPage({ id, workflowType }: Props) {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>("idle");
     const [openSourceOpen, setOpenSourceOpen] = useState(false);
+    const [duplicateOpen, setDuplicateOpen] = useState(false);
+
+    // Overview (process map) state. The blueprint is derived server-side from
+    // the workflow's instructions and cached, so opening the page is usually
+    // instant; the first open of a new workflow generates it.
+    const [tab, setTab] = useState<"overview" | "definition">("overview");
+    const [blueprint, setBlueprint] = useState<WorkflowBlueprint | null>(null);
+    const [blueprintLoading, setBlueprintLoading] = useState(true);
+    const [blueprintError, setBlueprintError] = useState<string | null>(null);
+    const [regenerating, setRegenerating] = useState(false);
 
     // Column actions dropdown
     const [colActionsOpen, setColActionsOpen] = useState(false);
@@ -160,6 +176,47 @@ export function WorkflowDetailPage({ id, workflowType }: Props) {
             .catch(() => setNotFound(true))
             .finally(() => setLoading(false));
     }, [id, workflowType]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setBlueprintLoading(true);
+        setBlueprintError(null);
+        getWorkflowBlueprint(id)
+            .then(({ blueprint: bp }) => {
+                if (!cancelled) setBlueprint(bp);
+            })
+            .catch((e) => {
+                if (!cancelled)
+                    setBlueprintError(
+                        e instanceof Error
+                            ? e.message
+                            : "Could not map this workflow's steps.",
+                    );
+            })
+            .finally(() => {
+                if (!cancelled) setBlueprintLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [id]);
+
+    const handleRegenerateBlueprint = useCallback(async () => {
+        setRegenerating(true);
+        setBlueprintError(null);
+        try {
+            const { blueprint: bp } = await regenerateWorkflowBlueprint(id);
+            setBlueprint(bp);
+        } catch (e) {
+            setBlueprintError(
+                e instanceof Error
+                    ? e.message
+                    : "Could not regenerate the process map.",
+            );
+        } finally {
+            setRegenerating(false);
+        }
+    }, [id]);
 
     const fetchWorkflowShares = useCallback(async () => {
         const shares = await listWorkflowShares(id);
@@ -360,6 +417,13 @@ export function WorkflowDetailPage({ id, workflowType }: Props) {
         workflow.open_source_submission?.status === "pending";
     const workflowActionItems: HeaderActionsMenuItem[] = [
         {
+            // Available for every workflow, including read-only built-ins —
+            // taking a copy is how you edit one you don't own.
+            label: "Duplicate & edit with AI",
+            icon: Copy,
+            onSelect: () => setDuplicateOpen(true),
+        },
+        {
             label: "Download workflow",
             icon: Download,
             onSelect: () => downloadWorkflowZip(workflow, promptMd, columns),
@@ -535,12 +599,68 @@ export function WorkflowDetailPage({ id, workflowType }: Props) {
                 }
             />
 
+            <WorkflowEditChatModal
+                open={duplicateOpen}
+                workflow={duplicateOpen ? workflow : null}
+                onClose={() => setDuplicateOpen(false)}
+                onSaved={(copy) => {
+                    setDuplicateOpen(false);
+                    router.push(
+                        copy.metadata.type === "tabular"
+                            ? `/workflows/tabular-review/${copy.id}`
+                            : `/workflows/assistant/${copy.id}`,
+                    );
+                }}
+            />
+
             {/* Body */}
             <div className="flex-1 min-h-0 flex flex-col">
                 {/* Metadata */}
                 <WorkflowMetadata workflow={workflow} />
 
-                {workflow.metadata.type === "assistant" ? (
+                {/* Tabs — the overview is what opens first: the process map,
+                    each step's objective/inputs/outputs/criteria, and where
+                    the workflow is exposed to silent AI failure. */}
+                <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-4 md:px-10">
+                    {(
+                        [
+                            { key: "overview" as const, label: "Overview" },
+                            {
+                                key: "definition" as const,
+                                label:
+                                    workflow.metadata.type === "assistant"
+                                        ? "Instructions"
+                                        : "Columns",
+                            },
+                        ]
+                    ).map((t) => (
+                        <button
+                            key={t.key}
+                            onClick={() => setTab(t.key)}
+                            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
+                                tab === t.key
+                                    ? "border-gray-900 font-medium text-gray-900"
+                                    : "border-transparent text-gray-500 hover:text-gray-700"
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+
+                {tab === "overview" ? (
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-10">
+                        <WorkflowBlueprintPanel
+                            blueprint={blueprint}
+                            loading={blueprintLoading}
+                            error={blueprintError}
+                            onRegenerate={() =>
+                                void handleRegenerateBlueprint()
+                            }
+                            regenerating={regenerating}
+                        />
+                    </div>
+                ) : workflow.metadata.type === "assistant" ? (
                     /* ── Assistant: WYSIWYG editor ── */
                     <div className="flex-1 min-h-0 px-4 pb-2 pt-4 md:px-10 md:pb-3">
                         <WorkflowPromptEditor

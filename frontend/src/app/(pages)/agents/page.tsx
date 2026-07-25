@@ -8,14 +8,18 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
+    AlertTriangle,
     Bot,
+    Brain,
     Check,
     ChevronDown,
     ChevronRight,
     CircleDashed,
+    Gavel,
     Loader2,
     Play,
     Plus,
+    RotateCcw,
     Trash2,
     X,
 } from "lucide-react";
@@ -24,7 +28,9 @@ import {
     approveAgentRun,
     cancelAgentRun,
     createAgentRun,
+    decideAgentPreflight,
     getAgentRun,
+    getAgentRunReport,
     exportOutput,
     getJadeAccessStatus,
     getLibrary,
@@ -32,10 +38,20 @@ import {
     type AgentPlan,
     type AgentRunSummary,
     type AgentStepDetail,
+    type InferenceLevel,
+    type PartnerReview,
+    type PreflightAssessment,
+    type RunReport,
+    type WorkflowBlueprint,
 } from "@/app/lib/roseApi";
 import type { Document } from "@/app/components/shared/types";
 import { usePaginatedList } from "@/app/hooks/usePaginatedList";
 import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
+import {
+    WorkflowProcessMap,
+    type StepRunStatus,
+} from "@/app/components/workflows/WorkflowProcessMap";
+import { PreflightGateBody } from "@/app/components/workflows/PreflightGate";
 
 const ROLES = ["intake", "research", "drafting", "review", "verify"] as const;
 
@@ -153,6 +169,25 @@ const ROLE_USES_PLAYBOOKS: Record<(typeof ROLES)[number], boolean> = {
     verify: false,
 };
 
+function SourceRow({ label, items }: { label: string; items: string[] }) {
+    if (items.length === 0) return null;
+    return (
+        <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {label}
+            </span>
+            {items.map((it, i) => (
+                <span
+                    key={`${label}-${i}`}
+                    className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700"
+                >
+                    {it}
+                </span>
+            ))}
+        </div>
+    );
+}
+
 // Per-run transparency: what a step actually consulted.
 function StepSources({
     sources,
@@ -179,30 +214,327 @@ function StepSources({
             </p>
         );
     }
-    const Row = ({ label, items }: { label: string; items: string[] }) =>
-        items.length === 0 ? null : (
-            <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                    {label}
-                </span>
-                {items.map((it, i) => (
-                    <span
-                        key={`${label}-${i}`}
-                        className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700"
-                    >
-                        {it}
-                    </span>
-                ))}
-            </div>
-        );
     return (
         <div className="mb-3 space-y-1.5 rounded-lg bg-gray-50 p-2.5">
             <p className="text-[11px] font-medium text-gray-500">
                 Sources used in this step
             </p>
-            <Row label="Playbooks" items={playbooks} />
-            <Row label="Documents" items={documents} />
-            <Row label="Knowledge" items={searches} />
+            <SourceRow label="Playbooks" items={playbooks} />
+            <SourceRow label="Documents" items={documents} />
+            <SourceRow label="Knowledge" items={searches} />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Transparency panels — reasoning and the senior-partner adjudication.
+// Both render expanded by default: the whole point is that the working is
+// visible without anyone having to go looking for it.
+// ---------------------------------------------------------------------------
+
+const INFERENCE_STYLES: Record<
+    InferenceLevel,
+    { chip: string; label: string; blurb: string }
+> = {
+    verbatim: {
+        chip: "bg-green-100 text-green-800",
+        label: "Verbatim",
+        blurb: "Operative content is quoted or clause-referenced throughout.",
+    },
+    low: {
+        chip: "bg-green-100 text-green-800",
+        label: "Low inference",
+        blurb: "Mostly sourced, with minor connective reasoning.",
+    },
+    moderate: {
+        chip: "bg-amber-100 text-amber-800",
+        label: "Moderate inference",
+        blurb: "Meaningful synthesis or gap-filling on top of the sources.",
+    },
+    high: {
+        chip: "bg-red-100 text-red-700",
+        label: "High inference",
+        blurb: "Substantially the model's own construction — check it against the sources.",
+    },
+};
+
+const VERDICT_STYLES: Record<string, string> = {
+    met: "bg-green-100 text-green-800",
+    partially_met: "bg-amber-100 text-amber-800",
+    not_met: "bg-red-100 text-red-700",
+    cannot_assess: "bg-gray-200 text-gray-700",
+};
+
+function StepReasoning({ reasoning }: { reasoning: string[] }) {
+    if (reasoning.length === 0) return null;
+    return (
+        <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50/70 p-2.5">
+            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+                <Brain className="h-3.5 w-3.5 text-gray-400" />
+                Thinking
+            </p>
+            <div className="space-y-2">
+                {reasoning.map((r, i) => (
+                    <p
+                        key={i}
+                        className="whitespace-pre-wrap border-l-2 border-gray-200 pl-2.5 text-[12px] leading-relaxed text-gray-600"
+                    >
+                        {r}
+                    </p>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function StepReviews({ reviews }: { reviews: PartnerReview[] }) {
+    if (reviews.length === 0) return null;
+    return (
+        <div className="mb-3 space-y-2">
+            {reviews.map((review, i) => (
+                <div
+                    key={i}
+                    className={`rounded-lg border p-2.5 ${
+                        review.decision === "accept"
+                            ? "border-green-200 bg-green-50/50"
+                            : "border-amber-200 bg-amber-50/50"
+                    }`}
+                >
+                    <p className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-gray-700">
+                        <Gavel className="h-3.5 w-3.5 text-gray-500" />
+                        Senior partner review — attempt {review.attempt}
+                        <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                                review.decision === "accept"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-amber-100 text-amber-800"
+                            }`}
+                        >
+                            {review.decision === "accept"
+                                ? "accepted"
+                                : "sent back"}
+                        </span>
+                        <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${INFERENCE_STYLES[review.inference.level].chip}`}
+                            title={INFERENCE_STYLES[review.inference.level].blurb}
+                        >
+                            {INFERENCE_STYLES[review.inference.level].label}
+                        </span>
+                    </p>
+                    {review.degraded && (
+                        <p className="mb-1 rounded bg-amber-100 px-2 py-1 text-[11px] text-amber-900">
+                            This step was not actually reviewed — the review call
+                            did not complete. Check it manually.
+                        </p>
+                    )}
+                    {review.reason && (
+                        <p className="text-[11px] leading-snug text-gray-700">
+                            {review.reason}
+                        </p>
+                    )}
+                    {review.criteria.length > 0 && (
+                        <ul className="mt-1.5 space-y-1">
+                            {review.criteria.map((c) => (
+                                <li
+                                    key={c.id}
+                                    className="text-[11px] leading-snug"
+                                >
+                                    <span
+                                        className={`mr-1.5 rounded px-1 py-0.5 text-[10px] font-medium ${
+                                            VERDICT_STYLES[c.verdict] ??
+                                            "bg-gray-100 text-gray-600"
+                                        }`}
+                                    >
+                                        {c.verdict.replaceAll("_", " ")}
+                                    </span>
+                                    <span className="text-gray-700">
+                                        {c.criterion}
+                                    </span>
+                                    {c.reason && (
+                                        <span className="text-gray-500">
+                                            {" "}
+                                            — {c.reason}
+                                        </span>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {review.inference.examples.length > 0 && (
+                        <p className="mt-1.5 text-[11px] leading-snug text-gray-600">
+                            <span className="font-medium">
+                                Inferential statements flagged:
+                            </span>{" "}
+                            {review.inference.examples.join("; ")}
+                        </p>
+                    )}
+                    {review.rework_instruction && (
+                        <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-amber-900">
+                            <RotateCcw className="mt-0.5 h-3 w-3 shrink-0" />
+                            <span>{review.rework_instruction}</span>
+                        </p>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+/**
+ * The completion report: the run's audit trail. Every step, what it was asked
+ * to achieve, its reasoning, the sources it actually touched, the senior
+ * partner's adjudication, and how much of the result is inference rather than
+ * sourced fact. Built entirely from persisted run data.
+ */
+function RunReportView({ report }: { report: RunReport }) {
+    return (
+        <div className="space-y-4">
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <h3 className="mb-2 text-sm font-medium text-gray-900">
+                    Summary
+                </h3>
+                {report.blueprint_summary && (
+                    <p className="mb-3 text-xs leading-relaxed text-gray-600">
+                        {report.blueprint_summary}
+                    </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                    {report.overall_inference && (
+                        <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${INFERENCE_STYLES[report.overall_inference].chip}`}
+                        >
+                            Overall:{" "}
+                            {INFERENCE_STYLES[report.overall_inference].label}
+                        </span>
+                    )}
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700">
+                        {report.steps.length} steps
+                    </span>
+                    {report.reworked_positions.length > 0 && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-800">
+                            Sent back for rework: step
+                            {report.reworked_positions.length > 1 ? "s" : ""}{" "}
+                            {report.reworked_positions.join(", ")}
+                        </span>
+                    )}
+                    {report.unreviewed_positions.length > 0 && (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] text-red-700">
+                            Not fully reviewed: step
+                            {report.unreviewed_positions.length > 1 ? "s" : ""}{" "}
+                            {report.unreviewed_positions.join(", ")}
+                        </span>
+                    )}
+                </div>
+                {report.overall_inference && (
+                    <p className="mt-2 text-[11px] leading-snug text-gray-500">
+                        {INFERENCE_STYLES[report.overall_inference].blurb}
+                    </p>
+                )}
+            </div>
+
+            {report.preflight && (
+                <details
+                    className="rounded-xl border border-gray-200 bg-white p-4"
+                    open={report.preflight.overall_risk === "high"}
+                >
+                    <summary className="cursor-pointer text-sm font-medium text-gray-900">
+                        Pre-flight assessment
+                        {report.preflight.decision === "continue"
+                            ? " — you chose to continue"
+                            : ""}
+                    </summary>
+                    <div className="mt-3">
+                        <PreflightGateBody
+                            assessment={report.preflight}
+                            running={false}
+                        />
+                    </div>
+                </details>
+            )}
+
+            {report.steps.map((s) => (
+                <div
+                    key={s.position}
+                    className="rounded-xl border border-gray-200 bg-white p-4"
+                >
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                            Step {s.position}
+                        </span>
+                        <h4 className="text-sm font-medium text-gray-900">
+                            {s.name}
+                        </h4>
+                        <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-600">
+                            {s.role}
+                        </span>
+                        {s.inference && (
+                            <span
+                                className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${INFERENCE_STYLES[s.inference].chip}`}
+                            >
+                                {INFERENCE_STYLES[s.inference].label}
+                            </span>
+                        )}
+                        {s.attempt > 1 && (
+                            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                                accepted on attempt {s.attempt}
+                            </span>
+                        )}
+                    </div>
+                    <p className="mb-2 text-[11px] leading-snug text-gray-600">
+                        <span className="font-medium">Objective:</span>{" "}
+                        {s.objective}
+                    </p>
+
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {[
+                            ...s.sources.documents.map(
+                                (d) => `doc: ${d}` as const,
+                            ),
+                            ...s.sources.playbooks.map(
+                                (p) => `playbook: ${p}` as const,
+                            ),
+                            ...s.sources.knowledge_searches.map(
+                                (k) => `kb: ${k}` as const,
+                            ),
+                            ...s.sources.citations_checked.map(
+                                (c) => `citation: ${c}` as const,
+                            ),
+                            ...s.sources.documents_created.map(
+                                (c) => `produced: ${c}` as const,
+                            ),
+                        ].map((label, i) => (
+                            <span
+                                key={i}
+                                className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-700"
+                            >
+                                {label}
+                            </span>
+                        ))}
+                        {s.sources.documents.length === 0 &&
+                            s.sources.playbooks.length === 0 &&
+                            s.sources.knowledge_searches.length === 0 && (
+                                <span className="text-[11px] text-gray-400">
+                                    No external sources recorded — this step
+                                    reasoned from the run context alone.
+                                </span>
+                            )}
+                    </div>
+
+                    <StepReasoning reasoning={s.reasoning} />
+                    <StepReviews reviews={s.reviews} />
+
+                    {s.output_text && (
+                        <details>
+                            <summary className="cursor-pointer text-[11px] text-gray-500 hover:text-gray-700">
+                                Step output
+                            </summary>
+                            <pre className="mt-1.5 max-h-96 overflow-auto whitespace-pre-wrap font-sans text-sm text-gray-700">
+                                {s.output_text}
+                            </pre>
+                        </details>
+                    )}
+                </div>
+            ))}
         </div>
     );
 }
@@ -257,26 +589,41 @@ function AgentsPageInner() {
             plan: AgentPlan | null;
             error: string | null;
             result: unknown;
+            blueprint?: WorkflowBlueprint | null;
+            preflight?: PreflightAssessment | null;
         };
         steps: AgentStepDetail[];
     } | null>(null);
     const [editPlan, setEditPlan] = useState<AgentPlan | null>(null);
-    const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+    // Steps are expanded by default — thinking, sources and the partner
+    // review are visible without anyone having to click into them. The set
+    // holds steps the user has explicitly COLLAPSED.
+    const [collapsedSteps, setCollapsedSteps] = useState<Set<number>>(new Set());
+    const [view, setView] = useState<"progress" | "report">("progress");
+    const [report, setReport] = useState<RunReport | null>(null);
+    const [reportMarkdown, setReportMarkdown] = useState<string>("");
+    const [reportOutput, setReportOutput] = useState<string>("");
+    const [gateBusy, setGateBusy] = useState(false);
     const [exportFormat, setExportFormat] = useState<"docx" | "pdf" | "md">("docx");
     const [exportStyle, setExportStyle] = useState<"as_written" | "aglc4">("as_written");
+    const [exportWhat, setExportWhat] = useState<"output" | "report">("output");
     const [exporting, setExporting] = useState(false);
 
-    // C040 — export the run's combined step outputs.
+    // C040 — export either the work product or the full process report.
     const handleExport = async () => {
         if (!detail || exporting) return;
         setExporting(true);
         try {
-            const content = detail.steps
+            const fallback = detail.steps
                 .filter((s) => s.output_text)
                 .map((s) => `## Step ${s.position} (${s.role})\n\n${s.output_text}`)
                 .join("\n\n");
+            const content =
+                exportWhat === "report"
+                    ? reportMarkdown || fallback
+                    : reportOutput || fallback;
             const blob = await exportOutput({
-                title: detail.run.title ?? "Agent run",
+                title: `${detail.run.title ?? "Agent run"}${exportWhat === "report" ? " — process report" : ""}`,
                 content,
                 format: exportFormat,
                 citation_style: exportStyle,
@@ -284,7 +631,7 @@ function AgentsPageInner() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${(detail.run.title ?? "agent-run").replace(/[^a-zA-Z0-9 _-]/g, "").trim() || "agent-run"}.${exportFormat}`;
+            a.download = `${(detail.run.title ?? "agent-run").replace(/[^a-zA-Z0-9 _-]/g, "").trim() || "agent-run"}${exportWhat === "report" ? "-report" : ""}.${exportFormat}`;
             a.click();
             URL.revokeObjectURL(url);
         } finally {
@@ -336,10 +683,49 @@ function AgentsPageInner() {
     useEffect(() => {
         setDetail(null);
         setEditPlan(null);
-        setExpandedSteps(new Set());
+        setCollapsedSteps(new Set());
+        setReport(null);
+        setReportMarkdown("");
+        setReportOutput("");
+        setView("progress");
         if (!selectedId) return;
         void refreshDetail();
     }, [selectedId, refreshDetail]);
+
+    // The completion report is assembled server-side from persisted data, so
+    // it is only fetched once the run has stopped moving.
+    const runFinished =
+        detail?.run.status === "completed" || detail?.run.status === "failed";
+    useEffect(() => {
+        if (!selectedId || !runFinished || report) return;
+        void getAgentRunReport(selectedId)
+            .then((r) => {
+                setReport(r.report);
+                setReportMarkdown(r.markdown);
+                setReportOutput(r.output);
+            })
+            .catch(() => {
+                /* the progress view still works without it */
+            });
+    }, [selectedId, runFinished, report]);
+
+    const handlePreflightDecision = async (
+        decision: "continue" | "stopped",
+    ) => {
+        if (!selectedId || gateBusy) return;
+        setGateBusy(true);
+        try {
+            await decideAgentPreflight(selectedId, decision);
+            await refreshDetail();
+            await refreshList();
+        } catch (e) {
+            setError(
+                e instanceof Error ? e.message : "Could not record your decision",
+            );
+        } finally {
+            setGateBusy(false);
+        }
+    };
 
     // Poll while active.
     const activeStatus =
@@ -395,11 +781,30 @@ function AgentsPageInner() {
         await refreshList();
     };
 
-    const stepByPosition = useMemo(() => {
-        const m = new Map<number, AgentStepDetail>();
-        for (const s of detail?.steps ?? []) m.set(s.position, s);
-        return m;
+    // Live status for the process map. A step that has produced at least one
+    // "rework" review and is still running is shown as reworking rather than
+    // just running — that distinction is the whole reason the review exists.
+    const statusByPosition = useMemo(() => {
+        const map: Record<number, StepRunStatus> = {};
+        for (const s of detail?.steps ?? []) {
+            const sentBack = (s.reviews ?? []).some(
+                (r) => r.decision === "rework",
+            );
+            map[s.position] =
+                s.status === "running" && sentBack
+                    ? "reworking"
+                    : (s.status as StepRunStatus);
+        }
+        return map;
     }, [detail]);
+
+    const currentStep = (detail?.steps ?? []).find(
+        (s) => s.status === "running",
+    );
+    const completedCount = (detail?.steps ?? []).filter(
+        (s) => s.status === "completed",
+    ).length;
+    const runBlueprint = detail?.run.blueprint ?? null;
 
     return (
         <div className="mx-auto flex h-full w-full max-w-6xl items-start gap-6 overflow-y-auto px-4 py-8">
@@ -630,6 +1035,24 @@ function AgentsPageInner() {
                                 {detail.run.status === "completed" && (
                                     <>
                                         <select
+                                            value={exportWhat}
+                                            onChange={(e) =>
+                                                setExportWhat(
+                                                    e.target.value as
+                                                        | "output"
+                                                        | "report",
+                                                )
+                                            }
+                                            className="rounded-md border border-gray-300 px-1.5 py-1.5 text-xs"
+                                        >
+                                            <option value="output">
+                                                Output
+                                            </option>
+                                            <option value="report">
+                                                Process report
+                                            </option>
+                                        </select>
+                                        <select
                                             value={exportFormat}
                                             onChange={(e) =>
                                                 setExportFormat(
@@ -685,8 +1108,159 @@ function AgentsPageInner() {
                             </div>
                         </div>
 
-                        {/* C030 — plan approval editor */}
-                        {detail.run.status === "awaiting_approval" &&
+                        {/* Pre-run silent-failure gate. Nothing has executed:
+                            the user either continues or stops to edit. */}
+                        {detail.run.status === "paused" &&
+                            detail.run.preflight && (
+                                <div className="mb-5 rounded-xl border border-red-200 bg-red-50/40 p-4">
+                                    <div className="mb-3 flex items-center gap-2">
+                                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                                        <p className="text-sm font-medium text-gray-900">
+                                            Paused before running — high risk of
+                                            silent AI failure on these documents
+                                        </p>
+                                    </div>
+                                    <PreflightGateBody
+                                        assessment={detail.run.preflight}
+                                        running={false}
+                                    />
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() =>
+                                                void handlePreflightDecision(
+                                                    "continue",
+                                                )
+                                            }
+                                            disabled={gateBusy}
+                                            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                                        >
+                                            Continue anyway
+                                        </button>
+                                        <button
+                                            onClick={() =>
+                                                void handlePreflightDecision(
+                                                    "stopped",
+                                                )
+                                            }
+                                            disabled={gateBusy}
+                                            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-white disabled:opacity-40"
+                                        >
+                                            Stop &amp; edit the workflow
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                        {/* Live process map — which step the run is up to. */}
+                        {runBlueprint &&
+                            detail.run.status !== "awaiting_approval" &&
+                            detail.run.status !== "paused" && (
+                                <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4">
+                                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                                        <h3 className="text-sm font-medium text-gray-900">
+                                            Process
+                                        </h3>
+                                        <span className="text-xs text-gray-500">
+                                            {completedCount} of{" "}
+                                            {detail.steps.length} steps complete
+                                        </span>
+                                        {currentStep && (
+                                            <span className="flex items-center gap-1.5 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                Now on step{" "}
+                                                {currentStep.position}:{" "}
+                                                {runBlueprint.steps.find(
+                                                    (s) =>
+                                                        s.position ===
+                                                        currentStep.position,
+                                                )?.name ?? currentStep.role}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <WorkflowProcessMap
+                                        steps={runBlueprint.steps}
+                                        statusByPosition={statusByPosition}
+                                        showRisk={false}
+                                    />
+                                </div>
+                            )}
+
+                        {/* Output / report switch, once there is a report. */}
+                        {report && (
+                            <div className="mb-4 flex items-center gap-1 border-b border-gray-200">
+                                {(
+                                    [
+                                        {
+                                            key: "progress" as const,
+                                            label: "Steps & output",
+                                        },
+                                        {
+                                            key: "report" as const,
+                                            label: "Process report",
+                                        },
+                                    ]
+                                ).map((t) => (
+                                    <button
+                                        key={t.key}
+                                        onClick={() => setView(t.key)}
+                                        className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
+                                            view === t.key
+                                                ? "border-gray-900 font-medium text-gray-900"
+                                                : "border-transparent text-gray-500 hover:text-gray-700"
+                                        }`}
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {view === "report" && report && (
+                            <RunReportView report={report} />
+                        )}
+
+                        {/* Workflow runs are approved against the blueprint the
+                            user already reviewed on the workflow page, so they
+                            get the map and step summaries rather than the raw
+                            instruction editor (the instructions here are the
+                            composed objective + criteria blocks, which are not
+                            useful to hand-edit). */}
+                        {view === "progress" &&
+                            detail.run.status === "awaiting_approval" &&
+                            runBlueprint && (
+                                <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+                                    <p className="mb-3 text-sm font-medium text-gray-900">
+                                        Ready to run. These are the steps, in
+                                        the order they&apos;ll execute.
+                                    </p>
+                                    {detail.run.preflight?.decision ===
+                                        "continue" && (
+                                        <p className="mb-3 rounded-md bg-white/70 px-2.5 py-1.5 text-[11px] text-amber-800">
+                                            You chose to continue past the
+                                            pre-flight warning. Every step will
+                                            still be reviewed against its
+                                            acceptance criteria.
+                                        </p>
+                                    )}
+                                    <div className="mb-3 rounded-lg bg-white p-3">
+                                        <WorkflowProcessMap
+                                            steps={runBlueprint.steps}
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => void handleApprove()}
+                                        className="flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+                                    >
+                                        <Play className="h-4 w-4" /> Approve &
+                                        run
+                                    </button>
+                                </div>
+                            )}
+
+                        {/* C030 — plan approval editor (ad-hoc agent runs) */}
+                        {view === "progress" &&
+                            detail.run.status === "awaiting_approval" &&
+                            !runBlueprint &&
                             editPlan && (
                                 <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
                                     <p className="mb-3 text-sm font-medium text-gray-900">
@@ -820,11 +1394,18 @@ function AgentsPageInner() {
                                 </div>
                             )}
 
-                        {/* Steps progress */}
-                        {detail.run.status !== "awaiting_approval" && (
+                        {/* Steps progress — expanded by default. */}
+                        {view === "progress" &&
+                            detail.run.status !== "awaiting_approval" &&
+                            detail.run.status !== "paused" && (
                             <ol className="space-y-2">
                                 {detail.steps.map((s) => {
-                                    const open = expandedSteps.has(s.position);
+                                    const open = !collapsedSteps.has(s.position);
+                                    const bp = runBlueprint?.steps.find(
+                                        (b) => b.position === s.position,
+                                    );
+                                    const reviews = s.reviews ?? [];
+                                    const attempts = s.attempt ?? reviews.length;
                                     return (
                                         <li
                                             key={s.position}
@@ -833,12 +1414,13 @@ function AgentsPageInner() {
                                             <button
                                                 onClick={() => {
                                                     const next = new Set(
-                                                        expandedSteps,
+                                                        collapsedSteps,
                                                     );
                                                     if (open)
+                                                        next.add(s.position);
+                                                    else
                                                         next.delete(s.position);
-                                                    else next.add(s.position);
-                                                    setExpandedSteps(next);
+                                                    setCollapsedSteps(next);
                                                 }}
                                                 className="flex w-full items-center gap-2.5 px-4 py-3 text-left"
                                             >
@@ -849,8 +1431,16 @@ function AgentsPageInner() {
                                                     {s.role}
                                                 </span>
                                                 <span className="min-w-0 flex-1 truncate text-sm text-gray-800">
-                                                    {s.instruction}
+                                                    {bp
+                                                        ? `${s.position}. ${bp.name}`
+                                                        : s.instruction}
                                                 </span>
+                                                {attempts > 1 && (
+                                                    <span className="hidden shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 sm:flex">
+                                                        <RotateCcw className="h-3 w-3" />
+                                                        {attempts} attempts
+                                                    </span>
+                                                )}
                                                 {s.depends_on.length > 0 && (
                                                     <span className="hidden text-[11px] text-gray-400 sm:block">
                                                         ⇠ {s.depends_on.join(",")}
@@ -864,12 +1454,28 @@ function AgentsPageInner() {
                                             </button>
                                             {open && (
                                                 <div className="border-t border-gray-100 px-4 py-3">
+                                                    {bp && (
+                                                        <p className="mb-2 text-[11px] leading-snug text-gray-500">
+                                                            <span className="font-medium text-gray-600">
+                                                                Objective:
+                                                            </span>{" "}
+                                                            {bp.objective}
+                                                        </p>
+                                                    )}
                                                     <StepSources
                                                         sources={s.sources}
                                                         role={s.role}
                                                     />
+                                                    <StepReasoning
+                                                        reasoning={
+                                                            s.reasoning ?? []
+                                                        }
+                                                    />
+                                                    <StepReviews
+                                                        reviews={reviews}
+                                                    />
                                                     {s.output_text ? (
-                                                        <pre className="max-h-96 overflow-auto whitespace-pre-wrap font-sans text-sm text-gray-700">
+                                                        <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap font-sans text-sm text-gray-700">
                                                             {s.output_text}
                                                         </pre>
                                                     ) : (

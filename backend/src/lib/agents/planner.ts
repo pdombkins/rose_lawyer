@@ -85,7 +85,10 @@ export function sanitizePlan(
             position,
             depends_on: [...new Set(depends)],
             role,
-            instruction: instruction.slice(0, 4000),
+            // Blueprint-derived instructions inline the step's objective,
+            // inputs, outputs and acceptance criteria, so they run longer
+            // than a bare planner instruction.
+            instruction: instruction.slice(0, 8000),
             // Tool allowlists are ALWAYS derived server-side from the role and
             // the live Jade-access toggle — never trusted from model output
             // (C013 guardrails).

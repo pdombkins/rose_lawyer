@@ -1658,6 +1658,170 @@ export async function listWorkflowShares(workflowId: string): Promise<
     return apiRequest(`/workflows/${workflowId}/shares`);
 }
 
+// ---------------------------------------------------------------------------
+// Workflow blueprints, conversational editing and the pre-flight gate
+// ---------------------------------------------------------------------------
+
+export type RiskLevel = "low" | "medium" | "high";
+
+export type BlueprintIO = {
+    name: string;
+    description: string;
+    source: string;
+};
+
+export type BlueprintCriterion = {
+    id: string;
+    applies_to: "input" | "output";
+    criterion: string;
+    why: string;
+};
+
+export type BlueprintStep = {
+    position: number;
+    depends_on: number[];
+    role: "intake" | "research" | "drafting" | "review" | "verify";
+    name: string;
+    objective: string;
+    inputs: BlueprintIO[];
+    outputs: BlueprintIO[];
+    quality_criteria: BlueprintCriterion[];
+    silent_failure: {
+        risk: RiskLevel;
+        modes: string[];
+        mitigation: string;
+    };
+    max_rework: number;
+};
+
+export type SilentFailureOverview = {
+    overall_risk: RiskLevel;
+    hotspots: {
+        position: number;
+        step_name: string;
+        risk: RiskLevel;
+        why: string;
+        mitigation: string;
+    }[];
+    notes: string;
+};
+
+export type WorkflowBlueprint = {
+    version: 1;
+    summary: string;
+    steps: BlueprintStep[];
+    silent_failure_overview: SilentFailureOverview;
+    generated_at: string;
+    source_hash: string;
+    degraded?: boolean;
+};
+
+export async function getWorkflowBlueprint(
+    workflowId: string,
+): Promise<{ blueprint: WorkflowBlueprint; cached: boolean }> {
+    return apiRequest(`/workflows/${workflowId}/blueprint`);
+}
+
+export async function regenerateWorkflowBlueprint(
+    workflowId: string,
+): Promise<{ blueprint: WorkflowBlueprint; cached: boolean }> {
+    return apiRequest(`/workflows/${workflowId}/blueprint`, { method: "POST" });
+}
+
+export async function duplicateWorkflow(
+    workflowId: string,
+    title?: string,
+): Promise<Workflow> {
+    return apiRequest<Workflow>(`/workflows/${workflowId}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(title ? { title } : {}),
+    });
+}
+
+export type WorkflowEditMessage = { role: "user" | "assistant"; content: string };
+
+export type WorkflowEditProposal = {
+    reply: string;
+    skill_md: string | null;
+    columns_config:
+        | { index: number; name: string; prompt: string; format?: string }[]
+        | null;
+    changes: string[];
+    notes: string | null;
+};
+
+export async function workflowEditChat(
+    workflowId: string,
+    messages: WorkflowEditMessage[],
+): Promise<WorkflowEditProposal> {
+    return apiRequest(`/workflows/${workflowId}/edit-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+    });
+}
+
+export type PreflightFinding = {
+    position: number;
+    step_name: string;
+    risk: RiskLevel;
+    issue: string;
+    recommendation: string;
+};
+
+export type PreflightAssessment = {
+    version: 1;
+    overall_risk: RiskLevel;
+    requires_confirmation: boolean;
+    summary: string;
+    findings: PreflightFinding[];
+    documents: {
+        document_id: string;
+        filename: string;
+        chars: number;
+        unreadable: boolean;
+        note: string | null;
+    }[];
+    assessed_at: string;
+    decision?: "continue" | "stopped";
+    decided_at?: string;
+};
+
+export async function workflowPreflight(
+    workflowId: string,
+    input: { document_ids?: string[]; request?: string },
+): Promise<{ preflight: PreflightAssessment; blueprint: WorkflowBlueprint }> {
+    return apiRequest(`/workflows/${workflowId}/preflight`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+}
+
+export async function runWorkflow(
+    workflowId: string,
+    input: {
+        request?: string;
+        document_ids?: string[];
+        project_id?: string | null;
+        preflight?: PreflightAssessment;
+        force?: boolean;
+    },
+): Promise<{
+    run_id: string;
+    plan: AgentPlan;
+    blueprint: WorkflowBlueprint;
+    preflight: PreflightAssessment;
+    gated: boolean;
+}> {
+    return apiRequest(`/workflows/${workflowId}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+}
+
 export async function deleteWorkflowShare(
     workflowId: string,
     shareId: string,
@@ -1820,6 +1984,30 @@ export type AgentStepSources = {
     knowledge_searches: string[];
 };
 
+export type CriterionVerdict = {
+    id: string;
+    criterion: string;
+    verdict: "met" | "partially_met" | "not_met" | "cannot_assess";
+    reason: string;
+};
+
+export type InferenceLevel = "verbatim" | "low" | "moderate" | "high";
+
+export type PartnerReview = {
+    attempt: number;
+    decision: "accept" | "rework";
+    reason: string;
+    criteria: CriterionVerdict[];
+    inference: {
+        level: InferenceLevel;
+        examples: string[];
+        note: string;
+    };
+    rework_instruction: string | null;
+    reviewed_at: string;
+    degraded?: boolean;
+};
+
 export type AgentStepDetail = {
     position: number;
     depends_on: number[];
@@ -1831,6 +2019,11 @@ export type AgentStepDetail = {
     finished_at: string | null;
     /** Knowledge sources this step actually consulted (from tool events). */
     sources?: AgentStepSources;
+    /** The model's reasoning trace, shown expanded by default. */
+    reasoning?: string[];
+    /** Senior-partner adjudications, one per attempt. */
+    reviews?: PartnerReview[];
+    attempt?: number;
 };
 
 export async function createAgentRun(input: {
@@ -1854,10 +2047,79 @@ export async function listAgentRuns(
 }
 
 export async function getAgentRun(id: string): Promise<{
-    run: AgentRunSummary & { plan: AgentPlan | null; error: string | null; result: unknown };
+    run: AgentRunSummary & {
+        plan: AgentPlan | null;
+        error: string | null;
+        result: unknown;
+        blueprint?: WorkflowBlueprint | null;
+        preflight?: PreflightAssessment | null;
+        workflow_id?: string | null;
+    };
     steps: AgentStepDetail[];
 }> {
     return apiRequest(`/agents/${id}`);
+}
+
+export type RunReportStep = {
+    position: number;
+    role: string;
+    name: string;
+    objective: string;
+    depends_on: number[];
+    status: string;
+    attempt: number;
+    instruction: string;
+    output_text: string | null;
+    reasoning: string[];
+    sources: {
+        playbooks: string[];
+        documents: string[];
+        knowledge_searches: string[];
+        citations_checked: string[];
+        documents_created: string[];
+    };
+    reviews: PartnerReview[];
+    inference: InferenceLevel | null;
+    started_at: string | null;
+    finished_at: string | null;
+};
+
+export type RunReport = {
+    version: 1;
+    run_id: string;
+    title: string;
+    request: string;
+    status: string;
+    model: string | null;
+    workflow_id: string | null;
+    started_at: string | null;
+    finished_at: string | null;
+    overall_inference: InferenceLevel | null;
+    reworked_positions: number[];
+    unreviewed_positions: number[];
+    preflight: PreflightAssessment | null;
+    blueprint_summary: string | null;
+    silent_failure_overview: SilentFailureOverview | null;
+    steps: RunReportStep[];
+};
+
+export async function getAgentRunReport(id: string): Promise<{
+    report: RunReport;
+    markdown: string;
+    output: string;
+}> {
+    return apiRequest(`/agents/${id}/report`);
+}
+
+export async function decideAgentPreflight(
+    id: string,
+    decision: "continue" | "stopped",
+): Promise<{ ok: boolean; status: string }> {
+    return apiRequest(`/agents/${id}/preflight-decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+    });
 }
 
 export async function approveAgentRun(
