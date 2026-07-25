@@ -16,8 +16,10 @@ import {
     APP_SURFACE_ACTIVE_CLASS,
     APP_SURFACE_HOVER_CLASS,
 } from "@/app/components/ui/liquid-surface";
+import { WorkflowBlueprintPreview } from "./WorkflowBlueprintPreview";
 
 type WorkflowPreviewMode = "auto" | "prompt" | "columns";
+type PreviewTab = "process" | "definition";
 type MobilePickerPane = "list" | "details";
 
 interface WorkflowPickerContentProps {
@@ -225,6 +227,12 @@ function WorkflowPreview({
                 ? "columns"
                 : "prompt"
             : mode;
+    // Selecting a workflow should answer "what will this do to my documents?".
+    // The process map opens by default; the raw instructions/columns stay one
+    // click away for anyone who wants to read the source.
+    const [tab, setTab] = useState<PreviewTab>("process");
+    const definitionLabel = resolvedMode === "columns" ? "Columns" : "Instructions";
+
     return (
         <div
             className={`${className} min-h-0 min-w-0 flex-1 flex-col overflow-visible`}
@@ -244,8 +252,39 @@ function WorkflowPreview({
                         </button>
                     ) : null}
                 </div>
+                <div className="flex h-8 shrink-0 items-center gap-1 border-b border-white/70 px-2">
+                    {(
+                        [
+                            { key: "process" as const, label: "Process" },
+                            {
+                                key: "definition" as const,
+                                label: definitionLabel,
+                            },
+                        ]
+                    ).map((t) => (
+                        <button
+                            key={t.key}
+                            type="button"
+                            onClick={() => setTab(t.key)}
+                            className={`rounded-md px-2 py-1 text-[11px] transition-colors ${
+                                tab === t.key
+                                    ? `${APP_SURFACE_ACTIVE_CLASS} font-medium text-gray-900`
+                                    : `text-gray-500 ${APP_SURFACE_HOVER_CLASS}`
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
-                    {resolvedMode === "columns" ? (
+                    {tab === "process" ? (
+                        // Keyed so switching workflows remounts cleanly rather
+                        // than briefly showing the previous one's steps.
+                        <WorkflowBlueprintPreview
+                            key={workflow.id}
+                            workflowId={workflow.id}
+                        />
+                    ) : resolvedMode === "columns" ? (
                         <WorkflowColumnPreview
                             columns={workflow.columns_config ?? []}
                         />

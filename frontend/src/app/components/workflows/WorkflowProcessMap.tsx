@@ -97,6 +97,8 @@ type Props = {
     onSelect?: (position: number) => void;
     /** Hide the per-step risk chips (the run page shows review state instead). */
     showRisk?: boolean;
+    /** Narrower cards and tighter gaps, for the picker's preview column. */
+    compact?: boolean;
 };
 
 export function WorkflowProcessMap({
@@ -105,6 +107,7 @@ export function WorkflowProcessMap({
     selected,
     onSelect,
     showRisk = true,
+    compact = false,
 }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const nodeRefs = useRef(new Map<number, HTMLElement>());
@@ -185,7 +188,7 @@ export function WorkflowProcessMap({
         <div className="overflow-x-auto pb-2">
             <div
                 ref={containerRef}
-                className="relative flex min-w-max items-stretch gap-10"
+                className={`relative flex min-w-max items-stretch ${compact ? "gap-6" : "gap-10"}`}
             >
                 <svg
                     className="pointer-events-none absolute inset-0"
@@ -220,7 +223,7 @@ export function WorkflowProcessMap({
                 {columns.map((column) => (
                     <div
                         key={column.depth}
-                        className="relative z-10 flex w-64 shrink-0 flex-col gap-4"
+                        className={`relative z-10 flex shrink-0 flex-col gap-4 ${compact ? "w-44" : "w-64"}`}
                     >
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                             {column.depth === 0
