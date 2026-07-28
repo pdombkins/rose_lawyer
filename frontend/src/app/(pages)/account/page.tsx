@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -60,11 +60,6 @@ export default function AccountPage() {
             setEmail(user.pendingEmail || user.email);
         }
     }, [user?.email, user?.pendingEmail]);
-
-    const handleLogout = async () => {
-        await signOut();
-        router.push("/");
-    };
 
     const handleDeleteAccount = async () => {
         devLog("[account/mfa] delete account requested");
@@ -325,20 +320,9 @@ export default function AccountPage() {
                 </AccountSection>
             </section>
 
-            {/* Actions */}
-            <section className="space-y-3">
-                <h2 className="text-2xl font-medium font-serif text-gray-900">
-                    Actions
-                </h2>
-                <Button
-                    variant="outline"
-                    onClick={handleLogout}
-                    className="w-full gap-1.5 rounded-lg border border-transparent bg-gray-950 px-3 text-white shadow-none transition-colors hover:bg-gray-900 hover:text-white active:bg-black sm:w-auto"
-                >
-                    <LogOut className="h-4 w-4 shrink-0" />
-                    Sign Out
-                </Button>
-            </section>
+            {/* Sign out lives only in the sidebar (AppSidebar), so there is a
+                single place to find it — and so it stays reachable for users
+                who can't open Settings at all. */}
 
             {/* Danger Zone */}
             <section className="space-y-3">

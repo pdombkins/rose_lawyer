@@ -1,9 +1,24 @@
 "use client";
 
+/**
+ * Settings section guard — admin-only, mirroring /admin/layout.tsx.
+ *
+ * Rose runs as a teaching instance: the accounts are student accounts and are
+ * managed centrally by the course convenor, so no self-service settings are
+ * exposed. That includes Security — students who forget a password still use
+ * the "Forgot password" flow on /login, which does not live under /account.
+ *
+ * Non-admins are redirected to /assistant, and the sidebar hides the entry
+ * point entirely (see AppSidebar). The backend enforces its own checks on the
+ * endpoints these pages call, so this is defence in depth rather than the only
+ * control — but it means a student never sees a settings shell.
+ */
+
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { useUserProfile } from "@/app/contexts/UserProfileContext";
 import { accountTabButtonClassName } from "./accountStyles";
 
 interface TabDef {
@@ -22,7 +37,6 @@ const TABS: TabDef[] = [
     },
     { id: "security", label: "Security", href: "/account/security" },
     { id: "models", label: "Model Preferences", href: "/account/models" },
-    { id: "usage", label: "Usage", href: "/account/usage" },
     { id: "api-keys", label: "API Keys", href: "/account/api-keys" },
     { id: "connectors", label: "Connectors", href: "/account/connectors" },
 ];
@@ -35,14 +49,26 @@ export default function AccountLayout({
     const router = useRouter();
     const pathname = usePathname();
     const { isAuthenticated, authLoading } = useAuth();
+    const { profile, loading: profileLoading } = useUserProfile();
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
             router.push("/");
+            return;
         }
-    }, [isAuthenticated, authLoading, router]);
+        // Settings are centrally managed — students get redirected out.
+        if (!profileLoading && profile && !profile.isAdmin) {
+            router.replace("/assistant");
+        }
+    }, [
+        isAuthenticated,
+        authLoading,
+        profile,
+        profileLoading,
+        router,
+    ]);
 
-    if (authLoading) {
+    if (authLoading || profileLoading) {
         return (
             <div className="h-dvh flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -50,7 +76,7 @@ export default function AccountLayout({
         );
     }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !profile?.isAdmin) {
         return null;
     }
 

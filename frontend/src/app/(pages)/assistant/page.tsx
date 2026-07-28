@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useAssistantChat } from "@/app/hooks/useAssistantChat";
 import { InitialView } from "@/app/components/assistant/InitialView";
 import { ChatView } from "@/app/components/assistant/ChatView";
-import BudgetBanner from "@/app/components/BudgetBanner";
 import type { Message } from "@/app/components/shared/types";
 
 export default function AssistantPage() {
@@ -26,7 +25,6 @@ export default function AssistantPage() {
     if (messages.length === 0) {
         return (
             <div className="flex h-full flex-col">
-                <BudgetBanner />
                 <div className="flex-1">
                     <InitialView
                         onSubmit={(message) =>
@@ -40,7 +38,6 @@ export default function AssistantPage() {
 
     return (
         <div className="flex h-full flex-col">
-            <BudgetBanner />
             <div className="min-h-0 flex-1">
                 <ChatView
                     chatId={chatId}

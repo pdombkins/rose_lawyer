@@ -12,6 +12,7 @@ import {
     Bot,
     BadgeCheck,
     Radar,
+    LogOut,
 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useUserProfile } from "@/app/contexts/UserProfileContext";
@@ -58,7 +59,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
     const { profile } = useUserProfile();
     const { chats, hasMoreChats, loadMoreChats, setCurrentChatId } =
         useChatHistoryContext();
@@ -512,18 +513,37 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                                         "bg-app-floating rounded-xl shadow-[0_6px_17px_rgba(15,23,42,0.1)] border border-white/70 backdrop-blur-xl",
                                     )}
                                 >
+                                    {/* Settings are centrally managed, so only
+                                        admins get an entry point. /account is
+                                        guarded independently. */}
+                                    {profile?.isAdmin && (
+                                        <button
+                                            onClick={() => {
+                                                router.push("/account");
+                                                setIsDropdownOpen(false);
+                                            }}
+                                            className={cn(
+                                                "w-full px-4 py-2 text-left text-sm text-gray-700 flex items-center gap-2 rounded-md",
+                                                "hover:bg-white",
+                                            )}
+                                        >
+                                            <User className="h-4 w-4" />
+                                            Account Settings
+                                        </button>
+                                    )}
+                                    {/* The only sign-out in the app. */}
                                     <button
                                         onClick={() => {
-                                            router.push("/account");
                                             setIsDropdownOpen(false);
+                                            void signOut();
                                         }}
                                         className={cn(
                                             "w-full px-4 py-2 text-left text-sm text-gray-700 flex items-center gap-2 rounded-md",
                                             "hover:bg-white",
                                         )}
                                     >
-                                        <User className="h-4 w-4" />
-                                        Account Settings
+                                        <LogOut className="h-4 w-4" />
+                                        Sign out
                                     </button>
                                 </div>
                             )}
