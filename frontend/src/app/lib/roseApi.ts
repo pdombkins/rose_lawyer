@@ -2697,12 +2697,24 @@ export async function removeGroupMember(
     });
 }
 
-export async function inviteGroup(groupId: string): Promise<{
+/**
+ * Email invitations to a group. `force` re-sends to EVERY member, including
+ * those that look registered — needed when accounts were auto-confirmed by
+ * something other than the student (e.g. a mail scanner redeeming the link).
+ */
+export async function inviteGroup(
+    groupId: string,
+    force = false,
+): Promise<{
     invited: number;
     skipped_registered: number;
     failed: { email: string; reason: string }[];
 }> {
-    return apiRequest(`/groups/${groupId}/invite`, { method: "POST" });
+    return apiRequest(`/groups/${groupId}/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+    });
 }
 
 export async function getProjectGroupGrants(projectId: string): Promise<{

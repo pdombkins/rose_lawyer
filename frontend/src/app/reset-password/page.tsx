@@ -8,8 +8,8 @@
  * user set a real password via supabase.auth.updateUser.
  */
 
-import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -20,8 +20,13 @@ const authGlassCardClassName =
 const authInputClassName =
     "rounded-lg border border-transparent bg-gray-100 px-3 shadow-none focus-visible:border-gray-200 focus-visible:ring-2 focus-visible:ring-gray-300/45";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    // `?setup=1` means we arrived from /accept: the invitation was just
+    // redeemed, so there is already a live session and this is a first-time
+    // password setup, not a reset. Changes the copy and skips the wait.
+    const isSetup = searchParams.get("setup") === "1";
     const [ready, setReady] = useState(false);
     const [expired, setExpired] = useState(false);
     const [password, setPassword] = useState("");
@@ -39,22 +44,33 @@ export default function ResetPasswordPage() {
             }
         });
 
-        // Fallback in case the event fired before this listener attached
-        // (can happen on a fast page load).
-        const timeout = window.setTimeout(async () => {
-            const { data } = await supabase.auth.getSession();
-            if (data.session) {
-                setReady(true);
-            } else {
-                setExpired(true);
-            }
-        }, 2500);
+        // Coming from /accept, verifyOtp has already established a session, so
+        // check straight away instead of making the student stare at
+        // "Verifying your link…" for 2.5s waiting for an event that won't fire.
+        let timeout: number | undefined;
+        if (isSetup) {
+            void supabase.auth.getSession().then(({ data }) => {
+                if (data.session) setReady(true);
+                else setExpired(true);
+            });
+        } else {
+            // Fallback in case the event fired before this listener attached
+            // (can happen on a fast page load).
+            timeout = window.setTimeout(async () => {
+                const { data } = await supabase.auth.getSession();
+                if (data.session) {
+                    setReady(true);
+                } else {
+                    setExpired(true);
+                }
+            }, 2500);
+        }
 
         return () => {
             subscription.unsubscribe();
-            window.clearTimeout(timeout);
+            if (timeout !== undefined) window.clearTimeout(timeout);
         };
-    }, []);
+    }, [isSetup]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -94,17 +110,24 @@ export default function ResetPasswordPage() {
             <div className="w-full max-w-md">
                 <div className={authGlassCardClassName}>
                     <h2 className="text-left text-2xl font-medium font-serif text-gray-950 mb-6">
-                        Set a new password
+                        {isSetup
+                            ? "Choose your password"
+                            : "Set a new password"}
                     </h2>
 
                     {expired && !ready ? (
                         <p className="text-sm text-gray-600">
-                            This password reset link is invalid or has
-                            expired. Request a new one from the{" "}
-                            <a href="/login" className="underline">
-                                login page
-                            </a>
-                            .
+                            {isSetup
+                                ? "Your invitation session has expired. Open your invitation link again, or ask your course convenor to re-send it."
+                                : "This password reset link is invalid or has expired. Request a new one from the "}
+                            {!isSetup && (
+                                <>
+                                    <a href="/login" className="underline">
+                                        login page
+                                    </a>
+                                    .
+                                </>
+                            )}
                         </p>
                     ) : success ? (
                         <p className="text-sm text-gray-600">
@@ -166,12 +189,24 @@ export default function ResetPasswordPage() {
                                 disabled={loading}
                                 className="w-full mt-5 bg-black hover:bg-gray-900 text-white"
                             >
-                                {loading ? "Saving..." : "Set new password"}
+                                {loading
+                                    ? "Saving..."
+                                    : isSetup
+                                      ? "Create my account"
+                                      : "Set new password"}
                             </Button>
                         </form>
                     )}
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={null}>
+            <ResetPasswordForm />
+        </Suspense>
     );
 }

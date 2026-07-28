@@ -36,6 +36,7 @@ import {
 } from "../lib/modelAccess";
 import { MODEL_REGISTRY } from "../lib/llm";
 import { isEmailConfigured, sendEmail, escapeHtml } from "../lib/email";
+import { createAcceptLink } from "../lib/inviteLinks";
 
 export const adminRouter = Router();
 
@@ -170,37 +171,19 @@ adminRouter.post("/invite", async (req, res) => {
 
   const db = createServerSupabase();
   const selfId = res.locals.userId as string;
-  const redirectTo = `${frontendBaseUrl()}/login`;
 
-  let actionLink: string | null = null;
-  const inviteLink = await db.auth.admin.generateLink({
-    type: "invite",
-    email,
-    options: { redirectTo },
-  });
-  if (inviteLink.error) {
-    // Already-registered emails can't take a fresh "invite" link — fall back
-    // to a magic link so re-sends still work instead of hard-failing.
-    const magic = await db.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-      options: { redirectTo },
-    });
-    if (magic.error) {
-      return void res.status(500).json({ detail: magic.error.message });
-    }
-    actionLink = magic.data.properties?.action_link ?? null;
-  } else {
-    actionLink = inviteLink.data.properties?.action_link ?? null;
-  }
-  if (!actionLink) {
-    return void res.status(500).json({ detail: "No action link was generated" });
+  // Emails a link to our own /accept page rather than Supabase's single-use
+  // action_link, so a corporate mail scanner's automated fetch can't redeem
+  // the token before the recipient clicks. See lib/inviteLinks.ts.
+  const link = await createAcceptLink(db, email);
+  if (!link.ok) {
+    return void res.status(500).json({ detail: link.error });
   }
 
   const sent = await sendEmail({
     to: email,
     subject: "You're invited to Rose",
-    html: adminInviteEmailHtml(actionLink),
+    html: adminInviteEmailHtml(link.acceptUrl),
   });
   if (!sent.ok) {
     return void res.status(500).json({ detail: sent.error });

@@ -115,12 +115,19 @@ export default function AdminGroupsPage() {
         }
     };
 
-    const handleInvite = async () => {
+    const handleInvite = async (force = false) => {
         if (!openId || busy) return;
+        if (
+            force &&
+            !window.confirm(
+                `Re-send an invitation to ALL ${members.length} members of this group, including those shown as registered?\n\nUse this when invitation links were consumed before the recipients could click them.`,
+            )
+        )
+            return;
         setBusy(true);
         setInviteResult(null);
         try {
-            const res = await inviteGroup(openId);
+            const res = await inviteGroup(openId, force);
             const parts = [`Sent ${res.invited} invite${res.invited === 1 ? "" : "s"}`];
             if (res.skipped_registered > 0)
                 parts.push(`${res.skipped_registered} already had accounts`);
@@ -314,6 +321,14 @@ export default function AdminGroupsPage() {
                                         {pendingCount === 0
                                             ? "All members have accounts"
                                             : `Email invites to ${pendingCount} pending member${pendingCount === 1 ? "" : "s"}`}
+                                    </button>
+                                    <button
+                                        onClick={() => void handleInvite(true)}
+                                        disabled={busy}
+                                        title="Re-send to every member, including those already marked as registered. Use if invitation links were consumed by a mail scanner before recipients clicked them."
+                                        className="rounded-md px-2 py-1.5 text-sm text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline disabled:opacity-40"
+                                    >
+                                        Re-send to all
                                     </button>
                                     {inviteResult && (
                                         <p className="text-xs text-gray-600">

@@ -21,10 +21,14 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { createServerSupabase } from "../lib/supabase";
-import { loadProfileUsersByEmail, loadActivatedEmails } from "../lib/userLookup";
+import {
+  loadProfileUsersByEmail,
+  loadActivatedEmails,
+  normalizeEmail,
+} from "../lib/userLookup";
 import { recordAudit } from "../lib/audit";
-import { frontendBaseUrl } from "../lib/urls";
 import { isEmailConfigured, sendEmail, escapeHtml } from "../lib/email";
+import { createAcceptLink } from "../lib/inviteLinks";
 
 /** Branded invitation email body containing the Supabase action link. */
 function inviteEmailHtml(groupName: string, actionLink: string): string {
@@ -345,44 +349,40 @@ groupsRouter.post("/:id/invite", async (req, res) => {
     .eq("group_id", req.params.id);
   const rows = (members ?? []) as { email: string; user_id: string | null }[];
 
-  // Target = members without an account yet (registered ones already have one).
-  const { userByEmail } = await loadProfileUsersByEmail(db);
+  // Target = members who haven't ACTUALLY activated an account yet.
+  //
+  // This deliberately uses `loadActivatedEmails` (auth confirmation / sign-in)
+  // rather than `loadProfileUsersByEmail`. A DB trigger writes a user_profiles
+  // row the instant `generateLink` provisions the account, so profile-existence
+  // marks every member as "registered" the moment the FIRST invite goes out —
+  // which made every subsequent re-invite a silent no-op that reported
+  // `invited: 0, skipped_registered: <everyone>`. The list view (GET /:id)
+  // already used the activation check; this endpoint had been left behind.
+  //
+  // `force: true` overrides the skip entirely. That is needed to recover from
+  // the mail-scanner incident (see lib/inviteLinks.ts): a scanner redeemed the
+  // old single-use links, which stamped `email_confirmed_at` on accounts whose
+  // owners never saw the email, so those students now look activated and would
+  // otherwise be unreachable by any re-send.
+  const force = req.body?.force === true;
+  const activated = await loadActivatedEmails(db);
   const targets = rows
     .map((m) => m.email)
-    .filter((email) => !userByEmail.has(email));
+    .filter((email) => force || !activated.has(normalizeEmail(email)));
   const skippedRegistered = rows.length - targets.length;
 
-  const redirectTo = `${frontendBaseUrl()}/login`;
   let invited = 0;
   const failed: { email: string; reason: string }[] = [];
 
   for (const email of targets) {
-    // 1. Provision an action link WITHOUT sending Supabase's own email.
-    //    First-time members get an "invite" (creates the account + set-up
-    //    link). If the account already exists (e.g. a previous invite that
-    //    wasn't accepted), fall back to a "magiclink" so re-sends still work.
-    let actionLink: string | null = null;
-    const inviteLink = await db.auth.admin.generateLink({
-      type: "invite",
-      email,
-      options: { redirectTo },
-    });
-    if (inviteLink.error) {
-      const magic = await db.auth.admin.generateLink({
-        type: "magiclink",
-        email,
-        options: { redirectTo },
-      });
-      if (magic.error) {
-        failed.push({ email, reason: magic.error.message });
-        continue;
-      }
-      actionLink = magic.data.properties?.action_link ?? null;
-    } else {
-      actionLink = inviteLink.data.properties?.action_link ?? null;
-    }
-    if (!actionLink) {
-      failed.push({ email, reason: "No action link was generated" });
+    // 1. Provision a one-time token WITHOUT sending Supabase's own email, and
+    //    wrap it in a /accept URL that mail scanners can fetch harmlessly.
+    // `setup: true` — a class invite is always onboarding, so land the student
+    // on the password-setup step even if the token came back as a magiclink
+    // because a previous invite had already provisioned their account.
+    const link = await createAcceptLink(db, email, { setup: true });
+    if (!link.ok) {
+      failed.push({ email, reason: link.error });
       continue;
     }
 
@@ -390,7 +390,7 @@ groupsRouter.post("/:id/invite", async (req, res) => {
     const sent = await sendEmail({
       to: email,
       subject: `You're invited to Rose — ${group.name}`,
-      html: inviteEmailHtml(group.name as string, actionLink),
+      html: inviteEmailHtml(group.name as string, link.acceptUrl),
     });
     if (!sent.ok) {
       failed.push({ email, reason: sent.error });
@@ -412,6 +412,7 @@ groupsRouter.post("/:id/invite", async (req, res) => {
       invited,
       already_registered: skippedRegistered,
       failed: failed.length,
+      forced: force,
     },
   });
 
