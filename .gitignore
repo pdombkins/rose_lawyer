@@ -31,3 +31,4 @@ scripts/fork-scan/reports/
 scripts/competitor-scan/last-scan.log
 scripts/competitor-scan/register.json
 scripts/competitor-scan/reports/
+.fuse_hidden*
