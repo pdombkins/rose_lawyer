@@ -13,6 +13,7 @@ import {
     BadgeCheck,
     Radar,
     LogOut,
+    Building2,
 } from "lucide-react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { useUserProfile } from "@/app/contexts/UserProfileContext";
@@ -213,6 +214,10 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                 {/* Nav items */}
                 {[
                     ...NAV_ITEMS,
+                    // Kendry & Slate practice-management system. Same origin,
+                    // same Supabase session — students are already signed in
+                    // when they land there.
+                    { href: "/firm/dashboard", label: "Kendry & Slate", icon: Building2 },
                     ...(profile?.isAdmin
                         ? [{ href: "/admin", label: "Admin", icon: ShieldCheck }]
                         : []),
@@ -224,10 +229,17 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                               ? pathname === href
                               : pathname === href ||
                                 pathname.startsWith(href + "/");
+                    // /firm is the Kendry & Slate SPA, not a Next route — it
+                    // must be a full page load, not a client-side push.
+                    const isExternalApp = href.startsWith("/firm");
                     return (
                         <div key={href} className="py-0.5 px-2.5">
                             <button
-                                onClick={() => router.push(href)}
+                                onClick={() =>
+                                    isExternalApp
+                                        ? (window.location.href = href)
+                                        : router.push(href)
+                                }
                                 title={!isOpen ? label : ""}
                                 className={cn(
                                     "w-full h-9 flex items-center gap-3 px-2.5 py-2 rounded-md transition-colors text-left",

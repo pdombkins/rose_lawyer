@@ -4,13 +4,14 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
-        "build": "next build",
+        "build": "npm run build:firm && next build",
         "start": "next start",
         "lint": "eslint",
         "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
         "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
         "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-        "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+        "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+        "build:firm": "cd ../ks-frontend && npm ci && npm run build && rm -rf ../frontend/public/firm && mkdir -p ../frontend/public/firm && cp -R dist/. ../frontend/public/firm/"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.1025.0",

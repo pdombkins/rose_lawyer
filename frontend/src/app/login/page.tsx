@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -20,8 +20,26 @@ const authToggleActiveClassName =
 const authToggleInactiveClassName =
     "inline-flex h-6 items-center rounded-full border border-transparent px-3 text-gray-500 transition-colors hover:bg-white/38 hover:text-gray-900";
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    // Where to land after sign-in. Used by the Kendry & Slate app, which has
+    // no login of its own and bounces here with ?returnTo=/firm/... Only
+    // same-origin paths are honoured, so this can't be used as an open
+    // redirect from a crafted link.
+    const rawReturnTo = searchParams.get("returnTo");
+    const returnTo =
+        rawReturnTo && rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//")
+            ? rawReturnTo
+            : "/assistant";
+    const goAfterLogin = () => {
+        if (returnTo.startsWith("/firm")) {
+            // Different app on the same origin — needs a full page load.
+            window.location.href = returnTo;
+        } else {
+            router.push(returnTo);
+        }
+    };
     const { isAuthenticated, authLoading } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -36,7 +54,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!authLoading && isAuthenticated) {
-            router.replace("/assistant");
+            goAfterLogin();
         }
     }, [authLoading, isAuthenticated, router]);
 
@@ -53,7 +71,7 @@ export default function LoginPage() {
 
             if (error) throw error;
 
-            router.push("/assistant");
+            goAfterLogin();
         } catch (error: unknown) {
             setError(
                 error instanceof Error
@@ -220,5 +238,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginForm />
+        </Suspense>
     );
 }

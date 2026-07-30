@@ -76,6 +76,15 @@ export type KnowledgeSourceEvent =
   | { type: "playbook_listed"; names: string[] }
   | { type: "playbook_reviewed"; name: string; filename?: string | null }
   | { type: "knowledge_search"; query: string; hits: number };
+import { KS_TOOL_NAMES } from "./ksTools";
+import {
+  ksListMatters,
+  ksGetMatter,
+  ksListTasks,
+  ksTimeLedger,
+  ksListStaff,
+  ksRecordTimeEntry,
+} from "../../ks";
 import { convertedPdfKey } from "../../convert";
 import { contentTypeForDocumentType } from "../../documentTypes";
 import { buildDownloadUrl } from "../../downloadTokens";
@@ -1031,6 +1040,77 @@ export async function runToolCalls(
         content = `Deleted rule "${topic}" from "${pbName}" (if it existed).`;
       } catch (err) {
         content = `Could not delete rule — ${(err as Error).message}`;
+      }
+      toolResults.push({ role: "tool", tool_call_id: tc.id, content });
+      continue;
+    }
+
+    // Kendry & Slate practice-management data.
+    //
+    // Scope is enforced inside lib/ks.ts, not here: the backend runs as
+    // service-role, so RLS does not apply and the helpers filter by
+    // ks.matter_members themselves. Errors are returned to the model as
+    // text so it can recover (e.g. call ks_list_matters first) rather than
+    // failing the whole turn.
+    if (Object.values(KS_TOOL_NAMES).includes(tc.function.name as never)) {
+      let content: string;
+      try {
+        const str = (k: string) =>
+          typeof args[k] === "string" ? (args[k] as string) : undefined;
+        switch (tc.function.name) {
+          case KS_TOOL_NAMES.listMatters:
+            content = JSON.stringify(await ksListMatters(userId, str("search")));
+            break;
+          case KS_TOOL_NAMES.getMatter:
+            content = JSON.stringify(
+              await ksGetMatter(userId, str("matter_id") ?? ""),
+            );
+            break;
+          case KS_TOOL_NAMES.listTasks:
+            content = JSON.stringify(
+              await ksListTasks(userId, {
+                matter_id: str("matter_id") ?? "",
+                phase: str("phase"),
+                workstream: str("workstream"),
+                status: str("status"),
+                assignee_name: str("assignee_name"),
+                overdue_only: args.overdue_only === true,
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.timeLedger:
+            content = JSON.stringify(
+              await ksTimeLedger(userId, {
+                matter_id: str("matter_id") ?? "",
+                from_date: str("from_date"),
+                to_date: str("to_date"),
+                source: str("source"),
+                limit:
+                  typeof args.limit === "number" ? (args.limit as number) : undefined,
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.listStaff:
+            content = JSON.stringify(await ksListStaff());
+            break;
+          case KS_TOOL_NAMES.recordTimeEntry:
+            content = JSON.stringify(
+              await ksRecordTimeEntry(userId, {
+                matter_id: str("matter_id") ?? "",
+                task_id: str("task_id"),
+                fee_earner_name: str("fee_earner_name") ?? "",
+                date: str("date"),
+                hours: Number(args.hours),
+                description: str("description") ?? "",
+                billable: args.billable !== false,
+              }),
+            );
+            break;
+          default:
+            content = `Unknown Kendry & Slate tool: ${tc.function.name}`;
+        }
+      } catch (err) {
+        content = `K&S: ${(err as Error).message}`;
       }
       toolResults.push({ role: "tool", tool_call_id: tc.id, content });
       continue;

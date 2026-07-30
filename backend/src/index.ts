@@ -25,6 +25,7 @@ import { listsRouter } from "./routes/lists";
 import { mcpServerRouter } from "./routes/mcpServer";
 import { patsRouter } from "./routes/pats";
 import { groupsRouter } from "./routes/groups";
+import { ksRouter } from "./routes/ks";
 import { runRegwatchScan } from "./lib/regwatch/scan";
 import { checkBudgetsAndNotify } from "./lib/usage";
 import { allowedOrigins } from "./lib/urls";
@@ -196,6 +197,8 @@ app.use("/regwatch", regwatchRouter);
 app.use("/mcp-server", mcpServerRouter);
 app.use("/pats", patsRouter);
 app.use("/groups", groupsRouter);
+// Kendry & Slate server-side operations (see routes/ks.ts).
+app.use("/ks", ksRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

@@ -66,6 +66,9 @@ function roleToolset(role: AgentRole, jadeApproved: boolean): string[] {
                 "list_list_items",
                 "add_list_item",
                 "update_list_item_status",
+                // K&S: enough to identify the matter being worked on.
+                "ks_list_matters",
+                "ks_get_matter",
             ];
         case "research":
             return [
@@ -81,6 +84,14 @@ function roleToolset(role: AgentRole, jadeApproved: boolean): string[] {
                 "jade_format_citation",
                 "tabular_ask",
                 "list_list_items",
+                // K&S practice-management reads. The estimate-vs-actual and
+                // time-ledger data is the evidence base for the Week-8
+                // CX/EX and ethics exercises.
+                "ks_list_matters",
+                "ks_get_matter",
+                "ks_list_tasks",
+                "ks_time_ledger",
+                "ks_list_staff",
             ];
         case "drafting":
             return [
@@ -100,6 +111,14 @@ function roleToolset(role: AgentRole, jadeApproved: boolean): string[] {
                 "list_list_items",
                 "add_list_item",
                 "update_list_item_status",
+                "ks_list_matters",
+                "ks_get_matter",
+                "ks_list_tasks",
+                "ks_time_ledger",
+                "ks_list_staff",
+                // The only K&S write. In WRITE_TOOLS, so any plan containing
+                // it is approval-gated (C030).
+                "ks_record_time_entry",
             ];
         case "review":
             return [
@@ -114,6 +133,9 @@ function roleToolset(role: AgentRole, jadeApproved: boolean): string[] {
                 "verify_citation",
                 "jade_format_citation",
                 "list_list_items",
+                "ks_get_matter",
+                "ks_list_tasks",
+                "ks_time_ledger",
             ];
         case "verify":
             return [
@@ -154,6 +176,9 @@ export const WRITE_TOOLS = new Set([
     // C076 — list mutations gate plans behind approval too.
     "add_list_item",
     "update_list_item_status",
+    // Writes to the K&S time ledger. Deliberately gated: the ledger is
+    // assessment data, and Week 8 treats it as evidence of conduct.
+    "ks_record_time_entry",
 ]);
 
 export function planNeedsApproval(plan: AgentPlan): boolean {

@@ -25,6 +25,7 @@ import {
   TABULAR_ASK_TOOLS,
 } from "./tools/kbTools";
 import { LIST_TOOLS } from "./tools/listTools";
+import { KS_TOOLS } from "./tools/ksTools";
 import { getOrgContextForUser } from "../orgContext";
 import { isKnowledgeBaseConfigured } from "../knowledgeBase";
 import { calculateCostAud } from "../pricing";
@@ -232,6 +233,10 @@ export async function runLLMStream(params: {
     ...TABULAR_ASK_TOOLS,
     // C076 — Lists tools only make sense with a matter in context.
     ...(projectId ? LIST_TOOLS : []),
+    // Kendry & Slate practice-management data. Always offered: the K&S
+    // matters are the course case study, and scope is enforced per user
+    // inside lib/ks.ts rather than by withholding the tools.
+    ...KS_TOOLS,
   ];
   let activeTools = extraTools?.length
     ? [...baseTools, ...mcpTools, ...extraTools]

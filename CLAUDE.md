@@ -162,3 +162,88 @@ Workflows are now a **declared, inspectable process** rather than an opaque prom
 **Not a bug — notification email.** `email_notifications` was **false for all 39** `user_profiles`; `sendEmailIfEnabled()` returns early on it, so no notification email had ever been sent. Opt in at Account → Features.
 
 **If it recurs:** scanners that render JS and click buttons would still burn a token. Next escalation is emailing a 6-digit OTP (`properties.email_otp`) with no URL at all.
+
+## 2026-07-30 — Kendry & Slate merged into Rose (Lovable retired)
+K&S now runs from **https://rose.lawyer/firm** on the Rose Worker + Rose Supabase project.
+
+- **`ks` schema** (`backend/migrations/20260730_01_ks_schema.sql`): 14 tables, RLS on all of them, 40 policies. Data migrated via a one-shot `extensions.http` pull from the old project: 8 profiles · 7 clients · 7 matters · 266 tasks · 423 assignments · 517 time entries · 265 events · 72 documents · 61 settings. **Recomputed `total_fees` matched the old cascade exactly on all 7 matters (zero drift).**
+- **Trigger cascade replaced.** 27 row-level triggers (incl. duplicates firing `update_task_hours_from_assignments` twice) → statement-level AFTER triggers with transition tables calling `ks.recompute(task_ids, matter_ids)` once per statement. `ks.suppress_adjustment` GUC prevents self-retrigger. NB: Postgres forbids transition tables with `UPDATE OF <cols>`, hence the GUC guard on `tasks_after_upd_fn`.
+- **Auth is real.** `ProtectedRoute` was a no-op ("No authentication required for demo mode") with 1 auth user and RLS off — that was the root of all 16 Critical findings. Now: one account per student across both apps, `ks.is_admin()` reads `public.user_profiles.is_admin`, `user_roles` (privilege-escalation surface) dropped.
+- **Persona ≠ identity.** `ks.profiles` = fee earner (James, Aisha…); `performed_by` on tasks/assignments/time_entries/events/documents = the real student. Makes the time ledger attributable — feeds the Week-8 ethics exercises.
+- **Provisioning.** `ks.matter_groups` (matter ↔ Rose `user_groups`) + `ks.matter_members` (matter ↔ `auth.users`). Triggers on `auth.users` insert, `user_group_members` change and `matter_groups` change call `ks.sync_user_memberships(email)`. Deprovisioning on user delete = FK cascade. Verified both directions live.
+- **Same-origin = SSO.** `/firm` shares Rose's origin, so both apps use the same `sb-<ref>-auth-token`. Do NOT set a custom `storageKey` in `ks-frontend/src/integrations/supabase/client.ts`.
+- **SPA fallback lives at `frontend/src/app/firm/[[...slug]]/route.ts`**, reading the shell via the Cloudflare `ASSETS` binding. Two approaches that do NOT work, both tried: a `_redirects` rule (Cloudflare rejects `/firm/* → /firm/index.html 200` as an infinite loop, and a splat there shadows real assets), and `fetch(origin + '/firm/index.html')` from the Worker (same-hostname subrequests don't reach the asset layer). There is deliberately **no** `/firm` rewrite in `next.config.ts` — `afterFiles` rewrites run before dynamic routes and would shadow the handler.
+- **Build/deploy:** `Cutover K&S.command` at the repo root, or `npm run build` in `frontend/` (which now runs `build:firm` first). `date-fns` pinned to `^3.6.0` — `react-day-picker@8` peers v2/v3 and the calendar is used by MatterDetail + SystemPerformanceTab.
+- **Still outstanding:** `ks_*` chat tools for Rose agents (the Week-8 workflows referenced the now-removed public MCP); edge functions `gantt-import-processor` / `rebaseline-processor` / `reset-processor` unported, so Gantt import and term reset don't work yet; instructor console; 11 npm vulnerabilities inherited from Lovable.
+
+## 2026-07-30 (later) — Closing the two K&S merge gaps
+Design: `docs/design/2026-07-30_ks-gaps-plan.md`.
+
+### Read scope narrowed (instructor decision)
+`backend/migrations/20260730_02_ks_scoped_reads.sql` — **applied**. Students now
+read only their own matter(s), not the whole firm. `ks.can_read_matter()` is the
+single test and equals the write test, because provisioning already grants
+exactly "group matter + shared NexaCare". `clients`/`client_contacts` are
+visible only via an accessible matter (else the CRM leaked the client book);
+`matter_members` is own-rows-only. Deliberately still firm-wide: `ks.profiles`
+(fee-earner directory — needed to render your own matter's assignments/rates),
+`ks.knowledge_documents`, `ks.system_settings`.
+**NB this changes Week-8 exercises that compare across matters.**
+
+### Track A — `ks_*` agent tools (replaces the deleted public MCP)
+- `backend/src/lib/chat/tools/ksTools.ts` (schemas) + `backend/src/lib/ks.ts`
+  (queries) + handler in `toolDispatcher.ts` + `KS_TOOLS` in `streaming.ts`.
+- Six tools: `ks_list_matters`, `ks_get_matter`, `ks_list_tasks`,
+  `ks_time_ledger`, `ks_list_staff`, `ks_record_time_entry`.
+- **The backend runs as service-role, so RLS does NOT apply.** Scope is enforced
+  in `accessibleMatterIds()` / `assertMatterAccess()`. Any new K&S tool MUST go
+  through those or the assistant becomes a way to read another group's data.
+- `ks_record_time_entry` is in `WRITE_TOOLS` → approval-gated; re-checks
+  membership after approval, validates the task belongs to the matter, and
+  stamps `performed_by` with the real student (`user_id` stays the persona).
+- Role allowlists in `agents/types.ts`: research/drafting get the full read set,
+  drafting alone gets the write, verify gets none.
+- `ks_time_ledger` surfaces `operator_name` — who actually booked an hour vs
+  whose name it was billed under. That distinction is the Week-8 hook.
+
+### Track B — edge functions
+Was described as "Gantt import and term reset don't work". **Correction after
+investigation:** every function was missing from the Rose project, but the
+interactive paths all had Supabase-client fallbacks, so they degraded rather
+than broke. Both `webhook-time-entry` call sites were `action: 'ping'` —
+diagnostics, not the time-logging path (that always went through the client).
+- **Deleted, superseded:** `time-entries`, `webhook-time-entry`,
+  `batch-update-tasks`, and the old `mcp`.
+- **B1 → Rose backend** (`backend/src/routes/ks.ts`, mounted `/ks`):
+  `POST /ks/tasks/reorder` (validates every task id belongs to the matter, and
+  only writes `order_position`) and `GET /ks/health` (replaces the ping; also
+  reports the caller's K&S scope). Frontend calls them via
+  `ks-frontend/src/lib/roseBackend.ts`.
+- **B2 → four batch jobs re-deployed with `verify_jwt: true` + admin check**
+  via `ks-frontend/supabase/functions/_shared/ksGuard.ts`. `reset-processor`
+  and `hours-processor` deployed through the Management API; the two large ones
+  (gantt-import 640 lines, rebaseline 652) deploy from the cutover script via
+  the Supabase CLI (needs a one-off `npx supabase login`).
+- **`hours-processor` was recovered from the old project** — it was live there
+  but absent from the Lovable export, so it existed in exactly one place.
+- **All four had `set_config('app.suppress_task_adjustment')` removed, not
+  renamed.** That GUC belongs to the old 27-trigger cascade; the new schema
+  uses `ks.suppress_adjustment`, managed inside `ks.recompute()`. Renaming
+  would have suppressed nothing while the functions wrote aggregates the new
+  triggers immediately recomputed.
+- **Term reset scope narrowed:** `matters`/`clients`/`client_contacts` removed
+  from `TABLES_TO_RESET`. They are the case study, and post-merge they cascade
+  to `ks.matter_groups`/`ks.matter_members` — so an early reset date would have
+  silently destroyed the group mapping and every student's provisioning.
+- Stale references cleaned: `supabaseConfig.ts` still *asserted* the old
+  project ref, and `Diagnostics.tsx` hardcoded old-project URLs.
+
+### Still outstanding
+`ks.jobs` table (job state is still JSON blobs in `system_settings`);
+instructor console; `MatterDetail.tsx` split; the 35-concurrent-writer load
+smoke-test; 11 npm vulnerabilities inherited from Lovable.
+
+### ⚠️ `seed/week8_v2.sql` HAS NEVER BEEN RUN
+The live Week-8 prompts are still the original 117–214 char versions. The v2
+seed (12 workflows, responsible-AI playbook, 5 clauses) is written and now
+references the `ks_*` tool names, but must be run in the Supabase SQL editor.

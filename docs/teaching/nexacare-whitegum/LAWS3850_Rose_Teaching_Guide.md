@@ -78,7 +78,14 @@ Emphasise throughout: the point is the student's **judgment over the output**, n
 - **Facilitate:** which tasks are safe to outsource, and which fail a quality gate? Connect to the billable-hour debate.
 
 ### Week 8 — Professional ethics; CX & EX
-See the CX/EX deep dive in §5. For **ethics**, run *LPM ethics check (W8)* on a proposed action (for example "compress diligence two weeks and lean on AI review"); it reviews against the governance playbook and surfaces where commercial pressure conflicts with obligation. Tie to Rogers & Dombkins and Legg.
+**Rebuilt July 2026 — see `WEEK8_v2_RUNSHEET.md` for the full session plan.**
+Twelve workflows now, not eight, with prompts carrying the actual frameworks
+(ASCR rr 4/7/9/17/19/37, LPUL ss 3/172/173, the OLSC complaint drivers, the CX
+lifecycle, NPS, Green on culture, Legg on ethical fading and practical wisdom).
+Evidence comes from the K&S practice-management MCP rather than invention, and
+the exercises now span tabular review, Deep-verify, the knowledge base,
+playbooks, clauses, lists and export. Seed: `seed/week8_v2.sql`; Library
+content: `week8-library/docx/`.
 
 ### Week 9 — Transformation & change management
 - **LPM focus:** change management, Kotter, innovation.
@@ -92,21 +99,16 @@ See the CX/EX deep dive in §5. For **ethics**, run *LPM ethics check (W8)* on a
 
 ## 5. Week-8 deep dive — Client Experience (CX) & Employee Experience (EX)
 
-Six workflows plus a *Client & employee experience standards* playbook and two template clauses (*Service recovery note*, *Team pulse check*) support this week. A suggested 60-minute flow:
+**Superseded July 2026.** The Week-8 material was rebuilt: twelve workflows, a
+responsible-AI playbook, five clauses, and a Library set covering the CX/EX and
+ethics references, an NPS verbatim set, the K&S values/EVP artefacts and eight
+ethics scenarios.
 
-1. **Baseline (CX).** Run *Client experience (CX) audit & scorecard* → each group gets a RAG scorecard of the matter's touchpoints and an improvement backlog. Discuss: where is the client experience most at risk, and why is it usually a *communication* failure rather than a *legal* one?
-2. **Recovery (CX).** Run *Service recovery response* on a seeded failure (e.g. "we missed the lease-consent deadline for the Parramatta premises"). **Teaching point built into the workflow:** the review step flags where a service apology risks becoming a legal admission needing partner/PI sign-off — the CX/ethics tension made concrete.
-3. **Listening (CX).** Run *Client feedback synthesis* on a short set of mock client comments (provide 6–8 lines) to model the data-driven CX reading from the HBR article — themes, sentiment, actions.
-4. **The team side (EX).** Run *Team experience (EX) & psychological-safety pulse* — uses the personas' wellbeing cues (Lily's over-commitment, Aisha's anxiety under pressure, David's rigidity, Tom's detail-miss risk). Then *Workload & wellbeing rebalance* to protect a sustainable pace while still meeting the deadline. Keep the framing supportive and non-clinical; the workflows are built to stay within a manager's remit.
-5. **Synthesis.** Run *Moments that matter — CX/EX map* to surface where client and employee experience reinforce or **conflict** (compressing the timetable pleases the client but strains the team) — the core Week-8 tension.
-
-**Facilitation prompts:** Can a strong culture prevent ethical breaches (Green)? Where did serving the client cost the team, and how would you redesign that moment? Which of Rose's own features support EX (the approval gate distributes accountability; the audit log protects the junior who flagged a risk)?
-
-**Assessment artefact:** a one-page "ideal happy path" (Week-8 activity) plus a short EX note on how the accelerated timetable was staffed — both producible with these workflows.
-
-**Care note for facilitators:** the EX workflows deliberately avoid clinical or diagnostic language and focus on practical, humane management actions. If real student wellbeing comes up in discussion, direct to UNSW support services rather than treating it as a case-study exercise.
-
----
+The session plan, setup steps, facilitation prompts and assessment artefacts
+are in **`WEEK8_v2_RUNSHEET.md`**. One open item is flagged there: six of the
+twelve workflows use the K&S practice-management MCP connector, which is
+registered per user and is not reachable by students now that Settings is
+admin-only.
 
 ## 6. Cross-cutting teaching hooks
 
