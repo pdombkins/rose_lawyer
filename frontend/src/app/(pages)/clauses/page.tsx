@@ -163,17 +163,23 @@ export default function ClausesPage() {
                                         </span>
                                     )}
                                 </h3>
-                                <button
-                                    onClick={() =>
-                                        void deleteClause(c.id).then(() =>
-                                            refresh(),
-                                        )
-                                    }
-                                    className="text-gray-300 hover:text-red-600"
-                                    title="Delete clause"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
+                                {c.read_only ? (
+                                    <span className="shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700">
+                                        Shared with your class
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={() =>
+                                            void deleteClause(c.id).then(() =>
+                                                refresh(),
+                                            )
+                                        }
+                                        className="text-gray-300 hover:text-red-600"
+                                        title="Delete clause"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                )}
                             </div>
                             <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">
                                 {c.body}

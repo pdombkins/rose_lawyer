@@ -88,9 +88,29 @@ playbooks, clauses, lists and export. Seed: `seed/week8_v2.sql`; Library
 content: `week8-library/docx/`.
 
 ### Week 9 — Transformation & change management
-- **LPM focus:** change management, Kotter, innovation.
-- **Run in Rose:** *Change plan — Kotter 8-step (W9)* for rolling out the client happy path or adopting Rose/LPM firm-wide; includes a resistance map keyed to the K&S partners. Stage ideas with the *Innovation one-pager* clause.
-- **Objective:** students can build an eight-step change plan and anticipate resistance from named stakeholders.
+**Rebuilt July 2026 — see `WEEK9_RUNSHEET.md` for the full session plan.**
+Ten workflows replace the single *Change plan — Kotter 8-step (W9)* stub, which
+the seed removes. The scenario is implementing the Week-8 client happy path on
+the NexaCare matter as a 90-day pilot.
+
+- **LPM focus:** Kotter's eight *errors*, D×V×F>R, Rogers' diffusion curve,
+  Vroom's expectancy theory, Prosci ADKAR and change impact assessment, and
+  Rogers & Bell on why professional-services change behaves differently.
+- **Run in Rose:** urgency from the data → coalition and diffusion map → vision
+  → communication pack → **change impact assessment (tabular, 10 typed
+  columns, one row per persona)** → resistance and loss map → expectancy
+  design → 90-day quick wins → **Kotter readiness review** (hard-marks the
+  group's own plan) → change pack (export).
+- **Evidence:** the K&S database, queried by the students. NexaCare has 49
+  tasks, none complete, all overdue, 650 estimated hours against 27 recorded,
+  and a firm-wide ledger with zero contemporaneous entries. They are not told
+  this — workflow 1 makes them find it.
+- **Objective:** students can build a change approach that answers *why would
+  this person actually do it*, evidenced from the firm's own data, and can
+  hard-mark their own plan against the eight errors.
+- **Facilitate:** why would James Bentley do this? Not should — would.
+- Seed: `seed/week9.sql`; Library content: `week9-library/docx/` plus the seven
+  persona documents in `week9-library/docx/personas/`.
 
 ### Week 10 — Group assessment
 - **Run in Rose:** *Group-assessment deliverable builder* assembles a group's analysis into a presentation-ready, export-ready pack (DOCX/PDF).

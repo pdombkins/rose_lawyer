@@ -243,6 +243,84 @@ diagnostics, not the time-logging path (that always went through the client).
 instructor console; `MatterDetail.tsx` split; the 35-concurrent-writer load
 smoke-test; 11 npm vulnerabilities inherited from Lovable.
 
+## 2026-07-30 — Week 9 teaching build (transformation & change management)
+`docs/teaching/nexacare-whitegum/seed/week9.sql` + `WEEK9_RUNSHEET.md` +
+`week9-library/`. Ten workflows, a 12-rule playbook, 5 clause templates,
+4 reference notes and 7 persona documents.
+
+- **Scenario:** implement the Week-8 client happy path on NexaCare as a 90-day
+  pilot. Four behavioural asks (contemporaneous time, task status in-system,
+  defined client touchpoints, visible matter plan) — no new software.
+- **Evidence is real and verified against the live DB:** NexaCare 49 tasks /
+  0 complete / all overdue · 650 est hours vs 27 recorded · 45 of 49 tasks
+  with zero time · firm ledger 0 `manual` / 275 `adjustment` / 32 `auto-sync`.
+  **Students are not told these** — workflow 1 makes them find them.
+- **Workflow 5 is tabular**, 10 typed columns (`risk`, `duration`, `money`),
+  one row per persona → the 7 persona docs must be uploaded as *separate*
+  Library documents.
+- **Workflow 9 (Kotter readiness review)** hard-marks the group's own plan
+  against the eight *errors*; workflow 10 assembles + exports the pack and
+  recommends the **Process report** over the Output report.
+- The seed **deletes the superseded v1 stub** `Change plan — Kotter 8-step
+  (W9)` (175 chars), guarded on no `tabular_reviews` referencing it.
+- **Verified before shipping:** pglast (real PG grammar) parse of the whole
+  file · all `$json$`/`$cols$` blocks parse as JSON · every target column
+  exists · uncast jsonb literal in `INSERT…SELECT` probed live and accepted ·
+  severities normalised to `low|medium|high` because
+  `routes/playbooks.ts` `SEVERITIES` silently coerces anything else to
+  `medium`.
+- **`plan_template` is documentation only.** Nothing reads it except the
+  `/compile` route that writes it — runs derive from `prompt_md` via the
+  blueprint. Edit prompts, not plan templates.
+- Workflows still need **sharing to the cohort in the UI** after seeding; the
+  seed does not write `workflow_shares`.
+
+## 2026-07-30 — Teaching content was invisible to the entire cohort
+Found while actioning the Week-9 install. Everything seeded under the
+instructor account was unreachable by students, silently — no errors, just
+empty results.
+
+| Content | Scoping | Was |
+|---|---|---|
+| Workflows | `user_id` OR `workflow_shares.shared_with_email` | **0 share rows** — no student had ever seen any workflow, W7/W8 included |
+| Playbooks / clauses | `.eq("owner_id", caller)` | invisible |
+| Knowledge base | `match_kb_chunks(match_owner := caller)` | invisible |
+| Library docs | `.eq("user_id", caller)` | invisible (but see below) |
+| Group project | `project_group_grants` (editor) | ✅ already correct |
+
+**Fixes applied:**
+- `seed/share_to_cohort.sql` — shares every instructor-owned workflow with
+  every `user_group_members` email (792 rows created: 22 × 36, `allow_edit
+  false`). **Re-run after every seed**; idempotent.
+- `backend/src/lib/teachingContent.ts` — `listTeachingOwnerIds()`. Rule: a
+  user in a `user_groups` row may READ the unfiled content of that group's
+  `created_by`. Derived from group membership, not hardcoded, so a second
+  instructor/course works unchanged. Returns `[]` for everyone else, and
+  every call site treats `[]` as previous behaviour. Resolves the caller's
+  email from `user_profiles` when not supplied (the tool dispatcher has no
+  email, and all 36 group rows had a null `user_id`).
+- Migration `20260730_04_teaching_content_visibility.sql` — adds
+  `teaching_owners uuid[]` to `match_kb_chunks` and `match_clauses`.
+  Additive; PostgREST resolves by argument NAME so the old overloads still
+  work. **Applied.** Verified: a non-instructor uuid gets 0 rows without it
+  and 5 with it.
+- Read paths wired: `lib/playbooks.ts` (own copy wins over a same-named
+  teaching one), `lib/clauses.ts`, `lib/knowledgeBase.ts`, `toolDispatcher`
+  (lazy, cached per turn), `routes/playbooks.ts`, `routes/clauses.ts`.
+  **Write paths untouched** — still `owner_id = caller`, so students
+  duplicate rather than edit. Responses carry `read_only`; UI shows "Shared
+  with your class" and hides delete.
+- **`searchClauses` now always runs the keyword pass**, not just as a
+  fallback. `match_clauses` requires `embedding is not null`, and clauses
+  inserted by a seed script have no embedding — so every SQL-seeded teaching
+  clause was invisible to `search_clauses` forever. (The 20 pre-existing
+  clauses all have embeddings because they came through the CSV import route,
+  which embeds; that's why this never showed up.)
+- **Library documents deliberately NOT changed.** `ensureDocAccess` /
+  `filterAccessibleDocumentIds` already admit docs linked into an accessible
+  project, so the path is Admin → Documents → link the folder to the six
+  group projects. Students see them in their matter, not in their Library tab.
+
 ### ⚠️ `seed/week8_v2.sql` HAS NEVER BEEN RUN
 The live Week-8 prompts are still the original 117–214 char versions. The v2
 seed (12 workflows, responsible-AI playbook, 5 clauses) is written and now

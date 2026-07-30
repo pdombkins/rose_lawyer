@@ -9,6 +9,7 @@ import type { ClauseInput } from "../lib/clauses";
 import { getUserApiKeys } from "../lib/userApiKeys";
 import { recordAudit } from "../lib/audit";
 import { parseCsvRecords } from "../lib/csv";
+import { listTeachingOwnerIds } from "../lib/teachingContent";
 
 const IMPORT_MAX_ROWS = 500;
 
@@ -19,6 +20,13 @@ clausesRouter.get("/", requireAuth, async (req, res) => {
   const userId = res.locals.userId as string;
   const db = createServerSupabase();
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  // Cohort teaching clauses are readable but not editable — the write routes
+  // below still key on owner_id, so a student duplicates rather than edits.
+  const teachingOwners = await listTeachingOwnerIds(
+    userId,
+    (res.locals.userEmail as string | undefined) ?? null,
+    db,
+  );
   if (q) {
     const apiKeys = await getUserApiKeys(userId, db);
     const results = await searchClauses(db, userId, q, {
@@ -28,18 +36,23 @@ clausesRouter.get("/", requireAuth, async (req, res) => {
           ? req.query.agreement_type
           : null,
       apiKeys,
+      teachingOwners,
     });
     return void res.json({ clauses: results });
   }
   const { data, error } = await db
     .from("clauses")
     .select(
-      "id, title, agreement_type, body, guidance, tags, source_document_id, project_id, created_at",
+      "id, title, agreement_type, body, guidance, tags, source_document_id, project_id, created_at, owner_id",
     )
-    .eq("owner_id", userId)
+    .in("owner_id", [...new Set([userId, ...teachingOwners])])
     .order("created_at", { ascending: false });
   if (error) return void res.status(500).json({ detail: error.message });
-  res.json({ clauses: data ?? [] });
+  const clauses = ((data ?? []) as { owner_id: string }[]).map((c) => ({
+    ...c,
+    read_only: c.owner_id !== userId,
+  }));
+  res.json({ clauses });
 });
 
 // POST /clauses

@@ -132,6 +132,9 @@ export interface SearchParams {
   k?: number;
   docType?: string | null;
   apiKeys?: { gemini?: string | null };
+  /** Cohort teaching owners whose unfiled chunks are also readable
+   *  (see lib/teachingContent.ts). Omit or [] for the previous behaviour. */
+  teachingOwners?: string[] | null;
 }
 
 export async function searchKnowledge(p: SearchParams): Promise<KbHit[]> {
@@ -143,6 +146,8 @@ export async function searchKnowledge(p: SearchParams): Promise<KbHit[]> {
     match_owner: p.ownerId,
     match_count: p.k ?? 6,
     filter_doc_type: p.docType ?? null,
+    accessible_projects: null,
+    teaching_owners: p.teachingOwners?.length ? p.teachingOwners : null,
   });
   if (error) throw new Error(`match_kb_chunks failed: ${error.message}`);
   return (data as KbHit[]) ?? [];

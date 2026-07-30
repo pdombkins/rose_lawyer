@@ -518,6 +518,17 @@ export async function runToolCalls(
   const toolResults: unknown[] = [];
   // Knowledge-source transparency (playbooks + KB) surfaced per turn/step.
   const knowledgeEvents: KnowledgeSourceEvent[] = [];
+  // Cohort teaching content: instructor-owned playbooks, clauses and KB
+  // chunks readable by students in that instructor's groups. Empty for
+  // everyone else, and resolved lazily so a normal turn pays nothing.
+  let teachingOwnersCache: string[] | null = null;
+  const teachingOwners = async (): Promise<string[]> => {
+    if (teachingOwnersCache === null) {
+      const { listTeachingOwnerIds } = await import("../../teachingContent");
+      teachingOwnersCache = await listTeachingOwnerIds(userId, null, db);
+    }
+    return teachingOwnersCache;
+  };
   const docsRead: { filename: string; document_id?: string }[] = [];
   const docsFound: {
     filename: string;
@@ -703,6 +714,7 @@ export async function runToolCalls(
           k,
           docType,
           apiKeys,
+          teachingOwners: await teachingOwners(),
         });
         content = formatKnowledgeForModel(kbQuery, hits);
         knowledgeEvents.push({
@@ -720,7 +732,7 @@ export async function runToolCalls(
     if (tc.function.name === "list_playbooks") {
       let content: string;
       try {
-        const pbs = await listPlaybooks(db, userId);
+        const pbs = await listPlaybooks(db, userId, await teachingOwners());
         content = pbs.length
           ? "Available playbooks:\n" +
             pbs
@@ -746,7 +758,7 @@ export async function runToolCalls(
         typeof args.playbook_name === "string" ? args.playbook_name : "";
       let content: string;
       try {
-        const pb = await getPlaybook(db, userId, pbName);
+        const pb = await getPlaybook(db, userId, pbName, await teachingOwners());
         if (!pb) {
           content = `No playbook named "${pbName}" was found. Use list_playbooks to see available playbooks.`;
         } else {
@@ -799,6 +811,7 @@ export async function runToolCalls(
               ? args.agreement_type
               : null,
           apiKeys,
+          teachingOwners: await teachingOwners(),
         });
         content = formatClausesForModel(query, clauses);
       } catch (err) {

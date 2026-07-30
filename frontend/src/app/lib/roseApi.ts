@@ -1854,6 +1854,9 @@ export interface PlaybookSummary {
     created_at: string;
     updated_at: string;
     rule_count: number;
+    /** Owned by an instructor and shared with your cohort — readable, not
+     *  editable. Duplicate it if you want your own version. */
+    read_only?: boolean;
 }
 
 export interface Playbook {
@@ -1864,6 +1867,7 @@ export interface Playbook {
     created_at: string;
     updated_at: string;
     rules: PlaybookRule[];
+    read_only?: boolean;
 }
 
 export interface PlaybookInput {
@@ -2185,6 +2189,9 @@ export type Clause = {
     source_document_id: string | null;
     project_id: string | null;
     created_at: string;
+    /** Owned by an instructor and shared with your cohort — readable, not
+     *  editable. Save your own copy to change it. */
+    read_only?: boolean;
 };
 
 export async function listClauses(query?: string): Promise<{ clauses: Clause[] }> {

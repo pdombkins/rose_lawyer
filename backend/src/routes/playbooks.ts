@@ -5,12 +5,19 @@
  * `list_playbooks` / `review_against_playbook` tools. Owner-scoped by the
  * authenticated user (owner_id = auth user id). Backend uses the service role,
  * which bypasses RLS, so every query is explicitly filtered by owner_id.
+ *
+ * READ paths additionally include cohort teaching content — playbooks owned
+ * by the creator of a student group the caller belongs to (see
+ * lib/teachingContent.ts). WRITE paths are untouched and stay owner-only, so
+ * a student can read and review a seeded playbook but must duplicate it to
+ * change it. `read_only` on the response tells the UI which is which.
  */
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { createServerSupabase } from "../lib/supabase";
 import { parseCsvRecords } from "../lib/csv";
 import { recordAudit } from "../lib/audit";
+import { listTeachingOwnerIds } from "../lib/teachingContent";
 
 export const playbooksRouter = Router();
 
@@ -61,11 +68,16 @@ function normalizeRules(raw: unknown): {
   return rules;
 }
 
-async function loadPlaybookWithRules(db: Db, ownerId: string, id: string) {
+async function loadPlaybookWithRules(
+  db: Db,
+  ownerId: string,
+  id: string,
+  teachingOwners: string[] = [],
+) {
   const { data: pb, error } = await db
     .from("playbooks")
-    .select("id, name, agreement_type, description, created_at, updated_at")
-    .eq("owner_id", ownerId)
+    .select("id, name, agreement_type, description, created_at, updated_at, owner_id")
+    .in("owner_id", [...new Set([ownerId, ...teachingOwners])])
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -78,7 +90,8 @@ async function loadPlaybookWithRules(db: Db, ownerId: string, id: string) {
     .eq("playbook_id", (pb as { id: string }).id)
     .order("position");
   if (rErr) throw new Error(rErr.message);
-  return { ...(pb as object), rules: rules ?? [] };
+  const row = pb as { owner_id: string };
+  return { ...(pb as object), read_only: row.owner_id !== ownerId, rules: rules ?? [] };
 }
 
 /** Replace the full rule set for a playbook (delete-then-insert, kept simple). */
@@ -99,12 +112,17 @@ async function replaceRules(db: Db, ownerId: string, playbookId: string, rulesRa
 playbooksRouter.get("/", requireAuth, async (_req, res) => {
   const ownerId = res.locals.userId as string;
   const db = createServerSupabase();
+  const teachingOwners = await listTeachingOwnerIds(
+    ownerId,
+    (res.locals.userEmail as string | undefined) ?? null,
+    db,
+  );
   const { data, error } = await db
     .from("playbooks")
     .select(
-      "id, name, agreement_type, description, created_at, updated_at, playbook_rules(count)",
+      "id, name, agreement_type, description, created_at, updated_at, owner_id, playbook_rules(count)",
     )
-    .eq("owner_id", ownerId)
+    .in("owner_id", [...new Set([ownerId, ...teachingOwners])])
     .order("name");
   if (error) return void res.status(500).json({ detail: error.message });
   const playbooks = (data ?? []).map((p) => {
@@ -115,10 +133,12 @@ playbooksRouter.get("/", requireAuth, async (_req, res) => {
       description: string | null;
       created_at: string;
       updated_at: string;
+      owner_id: string;
       playbook_rules?: { count: number }[];
     };
     return {
       id: row.id,
+      read_only: row.owner_id !== ownerId,
       name: row.name,
       agreement_type: row.agreement_type,
       description: row.description,
@@ -135,7 +155,17 @@ playbooksRouter.get("/:id", requireAuth, async (req, res) => {
   const ownerId = res.locals.userId as string;
   const db = createServerSupabase();
   try {
-    const pb = await loadPlaybookWithRules(db, ownerId, req.params.id);
+    const teachingOwners = await listTeachingOwnerIds(
+      ownerId,
+      (res.locals.userEmail as string | undefined) ?? null,
+      db,
+    );
+    const pb = await loadPlaybookWithRules(
+      db,
+      ownerId,
+      req.params.id,
+      teachingOwners,
+    );
     if (!pb) return void res.status(404).json({ detail: "Playbook not found" });
     res.json({ playbook: pb });
   } catch (err) {

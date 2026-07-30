@@ -304,6 +304,11 @@ export function PlaybookManager() {
                                                         {pb.agreement_type}
                                                     </span>
                                                 )}
+                                                {pb.read_only && (
+                                                    <span className="shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700">
+                                                        Shared with your class
+                                                    </span>
+                                                )}
                                             </span>
                                             <span className="mt-0.5 block truncate text-xs text-gray-500">
                                                 {pb.rule_count}{" "}
@@ -314,8 +319,13 @@ export function PlaybookManager() {
                                     </button>
                                     <button
                                         onClick={() => remove(pb.id)}
-                                        disabled={deletingId === pb.id}
-                                        title="Delete playbook"
+                                        disabled={deletingId === pb.id || !!pb.read_only}
+                                        title={
+                                            pb.read_only
+                                                ? "Shared by your instructor — duplicate it to make your own"
+                                                : "Delete playbook"
+                                        }
+                                        hidden={!!pb.read_only}
                                         className="shrink-0 rounded-lg p-2 text-gray-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-40"
                                     >
                                         {deletingId === pb.id ? (
