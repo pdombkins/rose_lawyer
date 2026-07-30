@@ -321,10 +321,25 @@ empty results.
   project, so the path is Admin → Documents → link the folder to the six
   group projects. Students see them in their matter, not in their Library tab.
 
-### ⚠️ `seed/week8_v2.sql` HAS NEVER BEEN RUN
-The live Week-8 prompts are still the original 117–214 char versions. The v2
-seed (12 workflows, responsible-AI playbook, 5 clauses) is written and now
-references the `ks_*` tool names, but must be run in the Supabase SQL editor.
+### ✅ Both seeds RUN 2026-07-30 (via the Supabase connector)
+- **week8_v2.sql** — 16 statements. Part 1 is eight plain `update workflows …
+  where title = '…'` (NOT guarded inserts), so the 8 short prompts were
+  genuinely replaced: 117–214 chars → 2,229–4,273. Part 2/3 inserted 4 new
+  workflows + playbook + 12 rules + 5 clauses. **Those UPDATEs key on title
+  alone, not `user_id`** — harmless now (one row per title) but a student
+  duplicate with the same title would be overwritten. Live: 12 W8 workflows
+  (11 assistant + 1 tabular).
+- **week9.sql** — 14 statements. Live: 10 W9 workflows, 12 playbook rules,
+  5 clauses; superseded stub deleted.
+- **`severity: 'critical'` normalised to `'high'`** in the DB and in
+  week8_v2.sql (4 rules). There is no CHECK constraint so it inserted fine,
+  but `SEVERITY_STYLES` in `PlaybookManager.tsx` has no `critical` key (badge
+  renders unstyled, select has no matching option) and `routes/playbooks.ts`
+  would coerce it to `medium` on save. Emphasis moved into `notes`.
+- **`share_to_cohort.sql` re-run after both** → 1,260 shares (35 workflows ×
+  36 students, `allow_edit false`).
+- Verified as a real student email: 35 workflows · 8 playbooks · 30 clauses ·
+  15 KB chunks · 1 group project.
 
 ### 2026-07-30 — "no matters showing" follow-up
 Two causes, both fixed:
