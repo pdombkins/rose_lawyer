@@ -102,7 +102,7 @@ function ProfileSelection() {
                     {profile.name}
                   </CardTitle>
                  <Badge className={getRoleColor(profile.role)}>
-                   {profile.id === 'admin' ? 'Administrator' : profile.role}
+                   {profile.role}
                  </Badge>
                 </CardHeader>
                   <CardContent className="text-center space-y-3">
@@ -121,16 +121,6 @@ function ProfileSelection() {
                        </span>
                      </div>
                    )}
-                    {profile.id === 'admin' && (
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          System Administrator Access
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Full system access and admin controls
-                        </p>
-                      </div>
-                    )}
                    {selectedId === profile.id && (
                      <div className="mt-4">
                         <Button className="w-full" size="sm">

@@ -24,6 +24,7 @@ import {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { selectedProfile } = useProfile();
+  const { isAdmin } = useAuth();
   const { user } = useAuth();
   const [stats, setStats] = useState({
     activeMatters: 0,
@@ -244,7 +245,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {quickActions
-              .filter(action => action.title !== "Admin Controls" || selectedProfile?.id === 'admin')
+              .filter(action => action.title !== "Admin Controls" || isAdmin)
               .map((action, index) => (
               <Button
                 key={index}

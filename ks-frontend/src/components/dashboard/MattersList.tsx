@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/contexts/ProfileContext";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   FileText, 
@@ -36,11 +37,12 @@ export default function MattersList() {
   const [matters, setMatters] = useState<Matter[]>([]);
   const [loading, setLoading] = useState(true);
   const { selectedProfile } = useProfile();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchMatters();
-  }, [selectedProfile]);
+  }, [selectedProfile, isAdmin]);
 
   const fetchMatters = async () => {
     if (!selectedProfile) return;
@@ -52,10 +54,16 @@ export default function MattersList() {
         .select('id, title, description, status, matter_type, created_at, total_fees, start_date, end_date, client_id, lead_partner_id, fee_type, fixed_fee, hourly_rate')
         .ilike('status', 'active');
       
-      // Filter based on profile role (Admin first!)
-      if (selectedProfile.id === 'admin') {
-        // Administrators can see ALL active matters
-        // No additional filtering needed - query already filters by status = 'active'
+      // Instructors see every matter they can read, whichever persona they are
+      // acting as. This used to test `selectedProfile.id === 'admin'` — a
+      // synthetic persona removed in the merge, so the branch was dead and
+      // instructors were silently reduced to one persona's view.
+      //
+      // For everyone else the persona filter stands: it is the point of the
+      // exercise. RLS has already narrowed the rows to the student's own
+      // matter(s), so this filters within that, never beyond it.
+      if (isAdmin) {
+        // no extra filtering — RLS already scopes what is visible
       } else if (selectedProfile.role === 'Partner') {
         // Partners can see all matters where they are the lead partner OR have tasks assigned
         const { data: taskMatters } = await supabase

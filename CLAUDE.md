@@ -247,3 +247,10 @@ smoke-test; 11 npm vulnerabilities inherited from Lovable.
 The live Week-8 prompts are still the original 117–214 char versions. The v2
 seed (12 workflows, responsible-AI playbook, 5 clauses) is written and now
 references the `ks_*` tool names, but must be run in the Supabase SQL editor.
+
+### 2026-07-30 — "no matters showing" follow-up
+Two causes, both fixed:
+1. **Account, not code.** `p.dombkins@unsw.edu.au` and `peter.dombkins@au.pwc.com` were `is_admin: false` with no `ks.matter_members` rows, so read scoping correctly returned nothing. All three Peter accounts are now admins. (Students get memberships automatically on invite acceptance; none exist yet.)
+2. **Dead `'admin'` persona branch.** `MattersList.tsx` and `Dashboard.tsx` gated "see everything" / "Admin Controls" on `selectedProfile.id === 'admin'` — the synthetic persona removed during the merge. Never true, so instructors saw one persona's matters and the Admin Controls button was permanently hidden. Both now use `isAdmin` from `useAuth`.
+
+**Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.

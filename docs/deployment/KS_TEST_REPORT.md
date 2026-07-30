@@ -134,6 +134,34 @@ charts and reports all follow automatically.
 
 ---
 
+## Follow-up: "no matters assigned to any of the personas"
+
+Reported after the read-scoping change. Two distinct causes.
+
+**1. The account, not the code.** You were signed in as
+`p.dombkins@unsw.edu.au`, which was `is_admin: false` with zero
+`ks.matter_members` rows. Under the scoping you asked for, that correctly sees
+nothing — and because `MattersList` derives its matter list from *tasks the
+persona is assigned*, an empty task read made every persona look empty too.
+All three of your accounts (gmail, PwC, UNSW) are now admins.
+
+**2. A dead branch I introduced.** `MattersList` chose "show all matters" with
+`selectedProfile.id === 'admin'` — the synthetic admin persona the merge
+deleted. The branch could never be true, so an instructor was silently reduced
+to a single persona's view. The same stale check hid the "Admin Controls"
+button on the dashboard entirely. Both now use `isAdmin` from `useAuth`; the
+dead display branches in `ProfileSelection` are gone too.
+
+The persona filter itself is intentional and stays for students — it is the
+point of the exercise. RLS narrows rows to their own matter first, so the
+persona filter only ever narrows *within* that, never beyond it.
+
+Underlying data was never the problem: every persona has tasks across 4-7
+matters (Lily Chen 7, David O'Connell 6, James Bentley 6, Priya Iyer 6,
+Aisha Rahman 5, Tom Nguyen 4, Mia Rossi 4).
+
+---
+
 ## Outstanding — needs your action
 
 **The Rose backend has not been redeployed.** `/ks/health` and
