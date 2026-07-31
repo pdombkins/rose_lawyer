@@ -451,6 +451,13 @@ I could not upload them from the sandbox (no network to rose.lawyer, R2 or
 GitHub — DNS fails), told Peter it needed the UI, and then **wrongly marked the
 task complete**. The browser route was available the whole time.
 
+**Closed out 31 Jul (after the Worker rollback):** both new student guides
+uploaded and indexed to the KB, filed into their week folders, and the stale
+`Student_Guide_CX_EX_Week8.docx` **deleted** — it described seven exercises
+that no longer exist. Final Library state: `Case file — NexaCare / Whitegum`
+(6) · `Week 8 — Ethics, CX & EX` (14, incl. guide) · `Week 9 — Change
+management` (12, incl. guide). All three linked to all six group projects.
+
 - Folders + links done in SQL rather than drag-drop: `Week 8 - reference &
   scenarios` (12 docs), `Week 9 - change management` (11), plus the existing
   `Week 8 - CX and EX` (8). All three linked to all six group projects via
