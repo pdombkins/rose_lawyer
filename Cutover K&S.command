@@ -126,9 +126,33 @@ echo
 read -r -p "Deploy to rose.lawyer now? [y/N] " REPLY
 if [[ "${REPLY:-N}" =~ ^[Yy]$ ]]; then
   npx opennextjs-cloudflare build || fail "opennext build failed"
+
+  # GUARD — never deploy without a Worker script.
+  #
+  # On 31 Jul 2026 a deploy shipped assets ONLY: the rose-lawyer Worker ended
+  # up with no script at all. Rose is entirely Worker-rendered, so every page
+  # 404'd and the only thing left to serve at the root was the K&S app staged
+  # at /firm — the site looked like it had been replaced by Kendry & Slate.
+  # `wrangler tail` named it exactly: "Cannot tail a Worker which only has
+  # assets". Recovery was `wrangler rollback`, but nothing had stopped the bad
+  # deploy going out in the first place.
+  [ -s ".open-next/worker.js" ] || fail "opennext build produced no .open-next/worker.js — refusing to deploy an assets-only Worker (this is what broke rose.lawyer on 31 Jul)"
+  ok "worker.js present ($(wc -c < .open-next/worker.js | tr -d ' ') bytes)"
+
   npx opennextjs-cloudflare deploy || fail "deploy failed"
   echo
   ok "Deployed"
+
+  # Post-deploy smoke test: a Worker-rendered route must return 200. If the
+  # script is missing this 404s, which is the signature of the 31 Jul failure.
+  sleep 5
+  LIB=$(curl -s -o /dev/null -w "%{http_code}" "https://rose.lawyer/library?cb=$RANDOM")
+  if [ "$LIB" = "200" ]; then
+    ok "/library returns 200 — the Worker is serving Rose"
+  else
+    echo "${RED}✗ /library returned $LIB — the Worker may not be serving.${OFF}"
+    echo "  Roll back with:  npx wrangler rollback"
+  fi
   echo "Verifying the SPA fallback on the live domain…"
   # Cloudflare needs a little time to propagate a fresh asset manifest, so
   # retry rather than declaring failure on the first probe.

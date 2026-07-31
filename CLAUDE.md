@@ -348,6 +348,40 @@ Two causes, both fixed:
 
 **Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.
 
+## 2026-07-31 — rose.lawyer served the K&S site (assets-only Worker)
+**Symptom:** `rose.lawyer/` returned the Kendry & Slate marketing shell,
+`/library` 404'd, `/firm` was fine. Looked like the domain had been taken over
+by the Lovable project we migrated off.
+
+**Cause:** the deploy at 04:05Z shipped the `rose-lawyer` Worker with **no
+script — assets only**. Rose is entirely Worker-rendered, so every page 404'd
+and the only thing left at the root was the K&S app staged in
+`frontend/public/firm`. Named exactly by `wrangler tail`:
+`Cannot tail a Worker which only has assets [code: 100311]`.
+
+**Not the cause:** DNS (still Cloudflare, `104.21.3.214`/`172.67.131.55`), the
+domain, Supabase, or the Railway backend (`/health` → `{"ok":true}`
+throughout). No other Cloudflare project had claimed the route. `git push` does
+not deploy the frontend — there is no CI for it, only `Cutover K&S.command`.
+
+**Fix:** `npx wrangler rollback 7a5ba7f2-…` (the 03:15Z version) restored the
+script in seconds. Verified after: `/` and `/library` both serve `title: Rose`.
+
+**Prevention (in `Cutover K&S.command`):** after the OpenNext build it now
+asserts `.open-next/worker.js` is non-empty and refuses to deploy otherwise,
+then smoke-tests `https://rose.lawyer/library` for a 200 after deploying and
+tells you to roll back if not.
+
+A clean `npx opennextjs-cloudflare build` was verified to emit `worker.js`
+(2,278 bytes) with all 47 routes, so the build itself is sound — the bad
+deploy almost certainly ran `wrangler deploy` directly, or deployed against a
+cleared `.open-next`. **Use `npm run deploy` or the cutover script, never a
+bare `wrangler deploy`.**
+
+**NB the live site is currently the 03:15Z rollback**, which predates today's
+frontend changes (`read_only` badges on shared playbooks/clauses,
+`linked_folder_name` on the Shared badge). A fresh deploy picks them up.
+
 ## 2026-07-31 — Weeks 8 and 9 harmonised to one hour each
 Peter: "this should only equate to an hour's worth of activity per week, and
 for each week there should be only one folder/student guide/set of activities."
