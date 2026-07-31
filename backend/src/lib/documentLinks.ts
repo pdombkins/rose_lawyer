@@ -172,10 +172,41 @@ export async function loadLinkedDocumentsForProject(
         .from("documents")
         .select("*")
         .in("id", ids);
-    return ((data ?? []) as Record<string, unknown>[])
+    const rows = ((data ?? []) as Record<string, unknown>[])
         // A document that already belongs to this project is not "linked in".
-        .filter((d) => (d.project_id as string | null) !== projectId)
-        .map((d) => ({ ...d, is_linked: true }));
+        .filter((d) => (d.project_id as string | null) !== projectId);
+    if (rows.length === 0) return [];
+
+    // Carry the SOURCE Library folder's name through. A linked document is a
+    // single row shared across every project it is linked into, so its
+    // `folder_id` (a project_subfolders id) cannot place it in each of those
+    // projects' folder trees — which is why linked docs arrive flat. Passing
+    // the Library folder name lets the UI group them under a read-only
+    // heading instead of dumping 31 files at the project root.
+    const folderIds = [
+        ...new Set(
+            rows
+                .map((d) => d.library_folder_id as string | null)
+                .filter((id): id is string => !!id),
+        ),
+    ];
+    const folderNameById = new Map<string, string>();
+    if (folderIds.length > 0) {
+        const { data: folders } = await db
+            .from("library_folders")
+            .select("id, name")
+            .in("id", folderIds);
+        for (const f of (folders ?? []) as { id: string; name: string }[]) {
+            folderNameById.set(f.id, f.name);
+        }
+    }
+
+    return rows.map((d) => ({
+        ...d,
+        is_linked: true,
+        linked_folder_name:
+            folderNameById.get(d.library_folder_id as string) ?? null,
+    }));
 }
 
 /**

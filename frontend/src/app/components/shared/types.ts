@@ -65,6 +65,11 @@ export interface Document {
   /** True when this document is shown in a project via a central link
    *  (document_project_links) rather than owned by the project. Read-only. */
   is_linked?: boolean;
+  /** For a linked document, the name of the Library folder it came from.
+   *  Linked docs cannot sit in a project's own folder tree — one document row
+   *  is shared across every project it is linked into, and folder_id is a
+   *  single column — so the source folder is surfaced as a label instead. */
+  linked_folder_name?: string | null;
 }
 
 export interface StructureNode {

@@ -348,6 +348,31 @@ Two causes, both fixed:
 
 **Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.
 
+## 2026-07-31 — A Rose project for every K&S matter (`ks.matter_projects`)
+Migration `ks_matter_project_sync` (**applied**) + mirrored in
+`backend/migrations/20260731_01_ks_matter_project_sync.sql`.
+- `ks.matter_projects (matter_id, project_id, auto_created, group_id)` maps a
+  matter to its Rose project(s). Many-to-many on purpose: NexaCare is worked by
+  all six groups and already had six per-group Rose projects holding real work.
+- `ks.sync_matter_project(matter_id)` is the whole thing, idempotent: ensure a
+  project, keep its name current, and make `project_group_grants` equal
+  `ks.matter_groups`. Triggers on `ks.matters` (insert / rename / delete) and
+  on `ks.matter_groups` (insert / delete).
+- **Access needs nothing new.** `project_group_grants` + `groupAccess.ts`
+  already resolve group membership by email, so a student reaches exactly the
+  projects for their matters.
+- **`group_id` pins a project to one group.** The first version cross-joined
+  every mapped project with every group on the matter → all six groups got
+  access to each other's NexaCare workspace. Caught in verification, live ~2
+  minutes, no student signed in. If you ever add a second multi-project matter,
+  set `group_id`.
+- **Delete is deliberately partial:** only `auto_created` projects are removed.
+  The six NexaCare projects are mapped `auto_created = false` so no trigger can
+  discard the cohort's chats and tabular reviews. Make it unconditional only if
+  Peter asks.
+- Verified live: create → project + one correct grant; rename → renamed;
+  delete → project and grants gone, no residue. 12 projects / 7 matters.
+
 ## 2026-07-31 — Teaching documents actually uploaded (and why they weren't before)
 **31 Library documents now live**, uploaded through the Rose UI by driving
 Peter's browser (Claude-in-Chrome `file_upload`). Previously only 8 were there —
@@ -374,6 +399,13 @@ shared across six projects — its single `folder_id` cannot be in six different
 project subfolders at once. Fix (not yet built): have
 `loadLinkedDocumentsForProject` return the source Library folder name and have
 DocTable render linked docs grouped under a read-only virtual folder.
+
+**Partly done 2026-07-31:** `loadLinkedDocumentsForProject` now returns
+`linked_folder_name`, and the "Shared" badge reads `Shared · Week 9 - change
+management`, so provenance is visible and 31 files at the project root are
+readable. The full virtual-folder grouping in `DocTable.tsx` is NOT done —
+that component is ~3,000 lines and renders every student's documents, so the
+tree change wants its own pass rather than being tacked on.
 
 ## 2026-07-30 — `ks.matters.shared_teaching` (NexaCare exempt from the persona filter)
 The persona filter matched on `tasks.assigned_to`, a single-owner column. On

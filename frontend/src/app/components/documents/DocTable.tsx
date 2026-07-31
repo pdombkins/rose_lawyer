@@ -1622,10 +1622,16 @@ export function DocTable({
                                                     )}
                                                     {doc.is_linked && (
                                                         <span
-                                                            title="Shared centrally from the Library — managed in Admin → Documents"
+                                                            title={
+                                                                doc.linked_folder_name
+                                                                    ? `Shared centrally from the Library folder "${doc.linked_folder_name}" — managed in Admin → Documents`
+                                                                    : "Shared centrally from the Library — managed in Admin → Documents"
+                                                            }
                                                             className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20"
                                                         >
-                                                            Shared
+                                                            {doc.linked_folder_name
+                                                                ? `Shared · ${doc.linked_folder_name}`
+                                                                : "Shared"}
                                                         </span>
                                                     )}
                                                 </div>
