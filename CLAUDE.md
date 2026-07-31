@@ -347,3 +347,22 @@ Two causes, both fixed:
 2. **Dead `'admin'` persona branch.** `MattersList.tsx` and `Dashboard.tsx` gated "see everything" / "Admin Controls" on `selectedProfile.id === 'admin'` — the synthetic persona removed during the merge. Never true, so instructors saw one persona's matters and the Admin Controls button was permanently hidden. Both now use `isAdmin` from `useAuth`.
 
 **Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.
+
+## 2026-07-30 — `ks.matters.shared_teaching` (NexaCare exempt from the persona filter)
+The persona filter matched on `tasks.assigned_to`, a single-owner column. On
+NexaCare that column is almost empty: **Mia Rossi owns 0 tasks and holds 27
+task_assignments; Aisha Rahman owns 0 and holds 24**; only Bentley (2) and Chen
+(1) own anything. So selecting Rossi or Rahman hid the shared case study — the
+two personas the Week-9 change impact assessment is built around.
+- Migration `ks_shared_teaching_matter` (**applied**): `ks.matters.shared_teaching
+  boolean not null default false`, true for NexaCare.
+- `MattersList.tsx`: the two persona branches collapsed into one `.or()` —
+  `shared_teaching.eq.true` always, plus `lead_partner_id` for partners, plus
+  the persona's task matters. Never returns early on an empty task list now.
+  **Widens nothing**: RLS has already narrowed to matters the student is a
+  `ks.matter_members` of; this only stops a UI filter hiding a readable matter.
+- Verified per group × persona: every persona now sees NexaCare.
+- **Known data quirk, left alone:** Group E's own matter has no Aisha Rahman
+  tasks, so a Group E student acting as Aisha sees NexaCare only. That is the
+  seeded resourcing, not the filter.
+- Requires the `/firm` rebuild (`Cutover K&S.command`) to reach students.

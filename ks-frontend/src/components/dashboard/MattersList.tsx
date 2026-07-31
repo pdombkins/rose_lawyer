@@ -51,7 +51,7 @@ export default function MattersList() {
     try {
       let query = supabase
         .from('matters')
-        .select('id, title, description, status, matter_type, created_at, total_fees, start_date, end_date, client_id, lead_partner_id, fee_type, fixed_fee, hourly_rate')
+        .select('id, title, description, status, matter_type, created_at, total_fees, start_date, end_date, client_id, lead_partner_id, fee_type, fixed_fee, hourly_rate, shared_teaching')
         .ilike('status', 'active');
       
       // Instructors see every matter they can read, whichever persona they are
@@ -64,38 +64,35 @@ export default function MattersList() {
       // matter(s), so this filters within that, never beyond it.
       if (isAdmin) {
         // no extra filtering — RLS already scopes what is visible
-      } else if (selectedProfile.role === 'Partner') {
-        // Partners can see all matters where they are the lead partner OR have tasks assigned
-        const { data: taskMatters } = await supabase
-          .from('tasks')
-          .select('matter_id')
-          .eq('assigned_to', selectedProfile.id);
-        
-        const taskMatterIds = taskMatters?.map(t => t.matter_id) || [];
-        
-        // Get matters where this partner is the lead partner OR has tasks
-        if (taskMatterIds.length > 0) {
-          query = query.or(`lead_partner_id.eq.${selectedProfile.id},id.in.(${taskMatterIds.join(',')})`);
-        } else {
-          query = query.eq('lead_partner_id', selectedProfile.id);
-        }
       } else {
-        // Non-partners (except admin) can see matters where they have tasks assigned
+        // Shared teaching matters (NexaCare) are exempt from the persona
+        // filter. Every group works that matter, and the Week-8/9 exercises
+        // put students inside it as personas who own no tasks — Mia Rossi and
+        // Aisha Rahman carry 51 of its task assignments between them and are
+        // `assigned_to` on none. Filtering it out hid the case study from
+        // exactly the people the exercises are written around.
+        //
+        // This widens nothing: RLS has already narrowed the rows to matters
+        // the student is a ks.matter_members of. It only stops a UI filter
+        // hiding a matter they can already read.
         const { data: taskMatters } = await supabase
           .from('tasks')
           .select('matter_id')
           .eq('assigned_to', selectedProfile.id);
-        
-        const taskMatterIds = taskMatters?.map(t => t.matter_id) || [];
-        
-        if (taskMatterIds.length > 0) {
-          query = query.in('id', taskMatterIds);
-        } else {
-          // If no tasks assigned, return empty array
-          setMatters([]);
-          setLoading(false);
-          return;
+
+        const taskMatterIds = [
+          ...new Set((taskMatters ?? []).map(t => t.matter_id).filter(Boolean)),
+        ] as string[];
+
+        const clauses: string[] = ['shared_teaching.eq.true'];
+        if (selectedProfile.role === 'Partner') {
+          // Partners also see matters they lead, not only ones they work on.
+          clauses.push(`lead_partner_id.eq.${selectedProfile.id}`);
         }
+        if (taskMatterIds.length > 0) {
+          clauses.push(`id.in.(${taskMatterIds.join(',')})`);
+        }
+        query = query.or(clauses.join(','));
       }
       
       const { data: mattersData, error } = await query.order('created_at', { ascending: false });

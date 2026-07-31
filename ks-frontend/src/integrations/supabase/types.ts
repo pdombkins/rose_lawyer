@@ -310,6 +310,7 @@ export type Database = {
           id: string
           lead_partner_id: string | null
           matter_type: string | null
+          shared_teaching: boolean
           start_date: string | null
           status: string | null
           title: string
@@ -327,6 +328,7 @@ export type Database = {
           id?: string
           lead_partner_id?: string | null
           matter_type?: string | null
+          shared_teaching?: boolean
           start_date?: string | null
           status?: string | null
           title: string
@@ -344,6 +346,7 @@ export type Database = {
           id?: string
           lead_partner_id?: string | null
           matter_type?: string | null
+          shared_teaching?: boolean
           start_date?: string | null
           status?: string | null
           title?: string
