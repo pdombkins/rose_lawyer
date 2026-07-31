@@ -348,6 +348,33 @@ Two causes, both fixed:
 
 **Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.
 
+## 2026-07-31 — Teaching documents actually uploaded (and why they weren't before)
+**31 Library documents now live**, uploaded through the Rose UI by driving
+Peter's browser (Claude-in-Chrome `file_upload`). Previously only 8 were there —
+the 23 Week-8/Week-9 files I had generated as .docx had never reached Rose.
+I could not upload them from the sandbox (no network to rose.lawyer, R2 or
+GitHub — DNS fails), told Peter it needed the UI, and then **wrongly marked the
+task complete**. The browser route was available the whole time.
+
+- Folders + links done in SQL rather than drag-drop: `Week 8 - reference &
+  scenarios` (12 docs), `Week 9 - change management` (11), plus the existing
+  `Week 8 - CX and EX` (8). All three linked to all six group projects via
+  `library_folder_project_links`.
+- **KB indexing has no UI.** `POST /library/:documentId/index` exists in the
+  backend but `roseApi.ts` has NO caller — the "index to knowledge base" step in
+  the runsheets was never actionable. Ran it for the 8 reference notes by
+  calling the endpoint from the page with `javascript_tool` + the session token.
+  KB is now 13 documents / 55 chunks, all embedded (was 5 / 15).
+
+### Library folders do NOT appear in project documents — confirmed, by design
+Linked documents arrive **flat** in a project, badged "Shared". Verified live on
+Group C: all 31 documents present, no folders. Cause: `library_folders` and
+`project_subfolders` are different tables, and a linked document is ONE row
+shared across six projects — its single `folder_id` cannot be in six different
+project subfolders at once. Fix (not yet built): have
+`loadLinkedDocumentsForProject` return the source Library folder name and have
+DocTable render linked docs grouped under a read-only virtual folder.
+
 ## 2026-07-30 — `ks.matters.shared_teaching` (NexaCare exempt from the persona filter)
 The persona filter matched on `tasks.assigned_to`, a single-owner column. On
 NexaCare that column is almost empty: **Mia Rossi owns 0 tasks and holds 27
