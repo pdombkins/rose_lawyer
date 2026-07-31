@@ -348,6 +348,42 @@ Two causes, both fixed:
 
 **Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.
 
+## 2026-07-31 — Weeks 8 and 9 harmonised to one hour each
+Peter: "this should only equate to an hour's worth of activity per week, and
+for each week there should be only one folder/student guide/set of activities."
+He was right — I had built a v2 Week-8 library alongside the v1 one and never
+reconciled them, so Week 8 had two folders, two sets of reference material and
+**12 workflows**; Week 9 had **10** and no student guide. An agent run with
+partner review takes 5–10 min, so an hour is ~5 activities. Both weeks were
+2–2.5× over and my runsheets hid it behind "for groups that move fast".
+
+**Now, per week: one folder · one student guide · five activities.**
+
+| Week 8 — Ethics, CX & EX (14 docs) | Week 9 — Change management (12 docs) |
+|---|---|
+| CX audit & scorecard | Change urgency — the evidence |
+| Ethics scenario triage (tabular) | Guiding coalition & diffusion map |
+| Team experience (EX) pulse | Change impact assessment (tabular) |
+| Client happy-path map | Quick wins — 90 day plan |
+| CX/EX remediation pack | Week 9 change pack |
+
+- **12 workflows deleted** (7 × W8, 5 × W9), Peter's call. Prompts survive in
+  `seed/week8_v2.sql` / `seed/week9.sql` if one is ever wanted back. Verified
+  first that no `tabular_reviews` or `agent_runs` referenced them; 432 share
+  rows cascaded away. Live: 5 W8 + 5 W9, 828 shares (23 workflows × 36).
+- **Third folder, `Case file — NexaCare / Whitegum`** (6 docs): the leases,
+  TSA schedule, MediTrax MSA and NexaCare MSA pdf are used by several weeks
+  and were sitting inside the Week-8 folder, which is what made Week 8 look
+  like it owned them. The empty `Week 8 - CX and EX` folder is gone. All
+  three folders linked to all six group projects.
+- **New student guides** `00-student-guide-week8.md` / `-week9.md` (+ .docx),
+  written to the five activities with per-activity timings. The v1
+  `Student_Guide_CX_EX_Week8.docx` describes activities that no longer exist —
+  **still needs deleting from the Library**, and both new guides still need
+  uploading: rose.lawyer was returning an error page when I tried.
+- Runsheets rewritten to the five-activity hour; `WEEK8_v2_RUNSHEET.md`
+  renamed `WEEK8_RUNSHEET.md` (there is no v1 to distinguish from any more).
+
 ## 2026-07-31 — A Rose project for every K&S matter (`ks.matter_projects`)
 Migration `ks_matter_project_sync` (**applied**) + mirrored in
 `backend/migrations/20260731_01_ks_matter_project_sync.sql`.

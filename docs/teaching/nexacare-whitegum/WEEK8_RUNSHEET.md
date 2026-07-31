@@ -2,18 +2,26 @@
 
 Professional ethics · Client experience · Employee experience
 
-## What changed from v1
+## What this week is
 
-The eight Week-8 workflows had prompts of 117–214 characters and were all
-`type='assistant'`. They now carry the actual frameworks from the slides and
-readings, and four new exercises broaden the feature coverage.
+**Five workflows** (one hour), a responsible-AI playbook, five clause templates
+and fourteen Library documents in one folder — **Week 8 — Ethics, CX & EX**.
+The matter documents live separately in **Case file — NexaCare / Whitegum**,
+because several weeks use them.
 
-| | v1 | v2 |
-|---|---|---|
-| Workflows | 8 | 12 |
-| Median prompt length | ~160 chars | ~3,500 chars |
-| Rose features exercised | Agent runtime only | Agent runtime, tabular review + Tabular Ask, Deep-verify, knowledge base, playbooks, clauses, lists, export, MCP connector |
-| Evidence base | Student imagination | K&S practice-management MCP (real tasks, time ledger, rates) |
+### Harmonised 31 July 2026
+
+Week 8 had grown two of everything: twelve workflows across two Library folders
+with two sets of reference material, which is roughly two and a half hours of
+work. The v1 content (a student guide plus the case documents) and the v2
+content (reference notes plus eight ethics scenarios) had been built at
+different times and never reconciled.
+
+Now: one folder, one student guide, five activities. Seven workflows were
+deleted — *AI use decision*, *Client feedback synthesis*, *LPM ethics check*,
+*Moments that matter*, *Professional obligations — verify before you rely*,
+*Service recovery response*, *Workload & wellbeing rebalance*. Their prompts
+survive in `seed/week8_v2.sql` if you ever want one back.
 
 ## Setup before class
 
@@ -30,20 +38,22 @@ readings, and four new exercises broaden the feature coverage.
 4. **Check the Jade toggle is OFF** (the default). Workflow 10 depends on the
    AustLII human-verification path, which is the pedagogical point.
 
-## The 60-minute flow
+## The 60-minute flow — five activities
+
+Harmonised 31 July 2026. Week 8 had twelve workflows and two Library folders,
+which is roughly two and a half hours of work and two competing sets of
+reference material. It is now **one folder, one student guide, five
+activities**. The other seven workflows were deleted.
 
 | Min | Activity | Workflow |
 |---|---|---|
-| 0–10 | **Baseline.** Each group audits the client experience on their own matter. Where is it most at risk, and why is it a communication rather than legal failure? | Client experience (CX) audit & scorecard |
-| 10–20 | **Ethics triage.** Run the eight scenarios as a tabular grid. Then use Tabular Ask across the grid: which scenarios share a root cause? Which would the client never discover? | Ethics scenario triage · Tabular Ask |
-| 20–30 | **Verify.** Take the triage output and verify every rule reference. Students record their own verdicts. Expect roughly a third to be partially wrong on effect while correct on citation — that is the teaching moment. | Professional obligations — verify before you rely |
-| 30–40 | **The team side.** EX pulse from the time ledger, then rebalance the workload and cost it. The reallocation has a price, and someone has to decide whether the client is told. | Team experience (EX) pulse · Workload & wellbeing rebalance |
-| 40–50 | **Synthesis.** Where do CX and EX conflict? Quantify the accelerated timetable: who decides, who pays. | Moments that matter — CX/EX map |
-| 50–60 | **Deliverable.** Templates saved as clauses, commitments as tracked list items, one-page happy path, exported pack. | CX/EX remediation pack |
+| 0–10 | **Baseline.** Audit the client experience on your own matter. Where is it most at risk, and why is that a communication failure rather than a legal one? | Client experience (CX) audit & scorecard |
+| 10–22 | **Ethics triage.** The eight scenarios as a tabular grid, then Tabular Ask across it: which share a root cause? Which would a client never discover? | Ethics scenario triage (tabular) |
+| 22–32 | **The team side.** EX pulse read out of the K&S time ledger — load, concentration, level fit, supervision. | Team experience (EX) & psychological-safety pulse |
+| 32–42 | **Design.** The client happy path, one page. Week 9 implements this, so keep it. | Client happy-path map |
+| 42–57 | **Deliverable.** Assemble, create tracked commitments, export the Process report. | CX/EX remediation pack |
 
-Workflows *Service recovery response*, *Client feedback synthesis*, *Client
-happy-path map* and *AI use decision* are available for groups that move fast,
-or as the basis for the Week-10 assessment.
+Three minutes spare, which you will need.
 
 ## Facilitation prompts
 

@@ -4,17 +4,18 @@ Transformation and change management · NexaCare/Whitegum · Kendry & Slate
 
 ## What this week is
 
-Ten workflows, a change-management playbook (12 rules), five templates and
-eleven Library documents. The group deliverable is a change management
-approach for implementing the Week-8 client happy path on the NexaCare matter.
+**Five workflows** (one hour), a change-management playbook (12 rules), five
+templates and twelve Library documents in one folder — **Week 9 — Change
+management**. The group deliverable is a change management approach for
+implementing the Week-8 client happy path on the NexaCare matter.
 
 Week 8 asked *what should the client experience be*. Week 9 asks *why would
 anyone actually change how they work*, and makes students answer it with the
 firm's own data rather than with adjectives.
 
-| | Week 8 (v2) | Week 9 |
+| | Week 8 | Week 9 |
 |---|---|---|
-| Workflows | 12 | 10 |
+| Workflows | 5 | 5 |
 | Evidence base | K&S tasks, time ledger, rates | The same, plus the ledger's `source` column — how time was captured, not just how much |
 | Rose features | Agent runtime, tabular, Deep-verify, KB, playbooks, clauses, lists, export | Agent runtime, tabular (10 typed columns), KB, playbooks, clauses, lists, export, process report |
 | Deliverable | CX/EX remediation pack | Change pack (8 sections + measurement appendix) |
@@ -42,10 +43,15 @@ when a partner pushes back, and being pushed back on is the entire skill.
 
 ## Setup before class
 
-1. **Run the seed** — `seed/week9.sql` in the Supabase SQL editor. Idempotent
-   (`where not exists` on every insert), so re-running is safe.
-2. **Upload the Library reference notes** from `week9-library/docx/` and
-   **index each to the knowledge base**:
+**All of this is done as at 31 July 2026** — recorded here so the week can be
+rebuilt from scratch.
+
+1. **Run the seed** — `seed/week9.sql` in the Supabase SQL editor. Idempotent,
+   so re-running is safe. Then `seed/share_to_cohort.sql`, which is what makes
+   the workflows visible to students at all.
+2. **Library reference notes** (uploaded, and indexed to the knowledge base by
+   calling `POST /library/:documentId/index` — note there is **no UI button**
+   for indexing):
    - `01-change-frameworks-reference.docx` — Kotter's eight errors, D×V×F>R,
      Rogers, Vroom, ADKAR, the aphorisms used as tests
    - `02-change-in-law-firms.docx` — Rogers & Bell; the six structural
@@ -54,27 +60,28 @@ when a partner pushes back, and being pushed back on is the entire skill.
      the method, deliberately not the answers
    - `04-nexacare-change-brief.docx` — the scenario; hand this one to students
      first
-3. **Upload the seven persona documents** from `week9-library/docx/personas/`
-   as **separate** Library documents. They are the rows for the tabular
-   workflow, so they cannot be combined into one file.
-4. **Check `week8_v2.sql` has been run.** It has not been as at 30 July —
-   the live Week-8 prompts are still the 117–214 character originals. Week 9
-   does not depend on it, but the Week-8 happy path is the thing being
-   implemented, so groups will want their own Week-8 output.
+   - `00-student-guide-week9.docx` — hand this to students first
+3. **The seven persona documents** from `week9-library/docx/personas/`, as
+   **separate** Library documents. They are the rows for the tabular workflow,
+   so they cannot be combined into one file.
+4. **`week8_v2.sql` has been run** (31 July). Groups will have their own
+   Week-8 happy path, which is the thing this week implements.
 
-## The 60-minute flow
+## The 60-minute flow — five activities
+
+Harmonised 31 July 2026. Week 9 was built with ten workflows, which is about
+two hours. It is now **five**; the other five were deleted.
 
 | Min | Activity | Workflow |
 |---|---|---|
-| 0–12 | **Find the burning platform.** Groups query K&S themselves. Do not preview the result. The moment the plan-versus-actual ratio lands is the lesson. | Change urgency — the evidence |
-| 12–20 | **Who moves first.** Coalition against Kotter's four attributes, then map the seven personas onto Rogers' curve. Force the question: who is your design audience? | Guiding coalition & diffusion map |
-| 20–28 | **Vision.** One page, then the three-sentence spoken version — and what is explicitly *protected*. Have one person from each group deliver theirs verbally, timed. | Change vision on a page · Communicate the vision |
-| 28–40 | **Impact assessment.** The tabular grid across all seven personas. Ten typed columns; the two that matter are "what they lose" and "adoption signal". | Change impact assessment (tabular) |
-| 40–50 | **Why would they?** Resistance and loss, then Expectancy × Instrumentality × Valence. Instrumentality reads zero for most personas; make them find that. | Resistance & loss map · Expectancy Theory motivation design |
-| 50–60 | **Ninety days.** Three engineered wins with baselines, targets and dates, then hard-mark the group's own plan against the eight errors. | Quick wins — 90 day plan · Kotter readiness review |
+| 0–12 | **Find the burning platform.** Groups query K&S themselves. Do not preview the result — the moment the plan-versus-actual ratio lands is the lesson. Includes the D×V×F scorecard. | Change urgency — the evidence |
+| 12–22 | **Who moves first.** Coalition against Kotter's four tests, personas onto Rogers' curve. Force the question: who is your design audience? | Guiding coalition & diffusion map |
+| 22–34 | **Impact.** The tabular grid across all seven personas. The two columns that matter are "what they lose" and "adoption signal". | Change impact assessment (tabular) |
+| 34–45 | **Ninety days.** Three engineered wins with baselines, targets, dates — and the anti-victory line. | Quick wins — 90 day plan |
+| 45–60 | **Deliverable.** Assemble, golden-thread table, export the Process report. | Week 9 change pack |
 
-*Week 9 change pack* is the assessment deliverable and is intended to be run
-outside class.
+Resistance and motivation are now covered inside the impact assessment's
+"what they lose" column and the discussion, rather than as separate runs.
 
 ## Facilitation prompts
 
@@ -100,9 +107,6 @@ outside class.
   anyone.** The column prompt pushes back, and the playbook rule marks it as a
   defect. Let the workflow deliver that criticism rather than delivering it
   yourself.
-- **The Kotter readiness review is a hard marker by design.** A group scoring
-  "Met" on all eight has read the plan shallowly, and the workflow says so.
-  That is the intended experience, and it is worth warning them once.
 - **Time recording is a genuine ethical thread, not just an efficiency one.**
   A ledger of 0 contemporaneous entries and 275 adjustments raises questions
   under ASCR r 4 and the costs-disclosure obligations they covered earlier. If
@@ -110,7 +114,7 @@ outside class.
 
 ## Assessment artefacts
 
-The **change pack** from workflow 10 — eight sections, ten pages excluding
+The **change pack** from activity 5 — eight sections, ten pages excluding
 appendices, with a measurement appendix listing every baseline and the tool
 call that produced it.
 
