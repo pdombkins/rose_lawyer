@@ -1409,386 +1409,471 @@ export function DocTable({
         );
     }
 
+    // Extracted from the childDocs.map() body so a document row can also be
+    // rendered inside a VIRTUAL folder (see renderLevel). Behaviour is
+    // unchanged — only the call site moved.
+    function renderDocumentRow(doc: Document, depth: number) {
+                const docName = doc.filename;
+                const isProcessing =
+                    doc.status === "pending" || doc.status === "processing";
+                const isError = doc.status === "error";
+                const isVersionsOpen = expandedVersionDocIds.has(doc.id);
+                const versionNumber = currentVersionNumber(doc);
+                const hasVersions =
+                    typeof versionNumber === "number" && versionNumber > 1;
+                const isVersionDragOver = dragOverVersionDocId === doc.id;
+                const isUploadingVersion = uploadingVersionDocIds.has(
+                    doc.id,
+                );
+                const isSelected = selectedDocIds.includes(doc.id);
+                const isDeletingDoc = deletingDocIds.has(doc.id);
+                if (isDeletingDoc) {
+                    return renderDocumentActivityRow({
+                        key: `deleting-doc-${doc.id}`,
+                        filename: doc.filename,
+                        fileType: doc.file_type,
+                        depth,
+                        statusLabel: "Deleting...",
+                    });
+                }
+                return (
+                    <div key={`doc-${doc.id}`}>
+                        <div
+                            data-document-row
+                            draggable={renamingDocumentId !== doc.id}
+                            onDragStart={(e) => {
+                                if (renamingDocumentId === doc.id) {
+                                    e.preventDefault();
+                                    return;
+                                }
+                                e.dataTransfer.setData(
+                                    "application/rose-doc",
+                                    doc.id,
+                                );
+                                e.dataTransfer.effectAllowed = "copyMove";
+                            }}
+                            onDragEnd={() => {
+                                setDragOverRoot(false);
+                                setDragOverFolderId(null);
+                                setDragOverVersionDocId(null);
+                            }}
+                            onDragOver={(e) =>
+                                handleDocumentVersionDragOver(e, doc.id)
+                            }
+                            onDragLeave={handleDocumentVersionDragLeave}
+                            onDrop={(e) =>
+                                handleDocumentVersionDrop(e, doc)
+                            }
+                            onClick={() => {
+                                setViewingDocVersion(null);
+                                setViewingDoc(doc);
+                            }}
+                            onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                closeRowActionMenus();
+                                setContextMenu({
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    docId: doc.id,
+                                    folderId: null,
+                                    showFolderActions: false,
+                                });
+                            }}
+                            className={`group flex h-10 min-w-max items-center pr-8 cursor-pointer transition-colors ${isVersionDragOver ? "bg-blue-50 ring-1 ring-inset ring-blue-200" : isSelected ? APP_SURFACE_ACTIVE_CLASS : APP_SURFACE_HOVER_CLASS}`}
+                        >
+                            {(() => {
+                                const rowBg = isVersionDragOver
+                                    ? "bg-blue-50"
+                                    : isSelected
+                                      ? APP_SURFACE_ACTIVE_CLASS
+                                      : stickyCellBg;
+                                return (
+                                    <>
+                                        <div
+                                            className={`sticky left-0 z-[60] ${DOC_NAME_COL_W} ${rowBg} py-2 pl-4 pr-2 transition-colors ${isVersionDragOver || isSelected ? "" : APP_SURFACE_GROUP_HOVER_CLASS}`}
+                                            style={treeNameCellStyle(depth)}
+                                        >
+                                            <div className="flex items-center">
+                                                {isProcessing ||
+                                                isUploadingVersion ? (
+                                                    <Loader2 className="mr-4 h-2.5 w-2.5 animate-spin text-gray-400 shrink-0" />
+                                                ) : doc.is_linked ? (
+                                                    // Centrally-linked docs are read-only here — no
+                                                    // selection so they can't be bulk-deleted (they
+                                                    // belong to the Library, managed in Admin →
+                                                    // Documents).
+                                                    <span
+                                                        title="Shared centrally — manage in Admin → Documents"
+                                                        className="mr-4 flex h-2.5 w-2.5 shrink-0 items-center justify-center"
+                                                    >
+                                                        <Link2 className="h-3 w-3 text-indigo-400" />
+                                                    </span>
+                                                ) : (
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedDocIds.includes(
+                                                            doc.id,
+                                                        )}
+                                                        onChange={() =>
+                                                            setSelectedDocIds(
+                                                                (prev) =>
+                                                                    prev.includes(
+                                                                        doc.id,
+                                                                    )
+                                                                        ? prev.filter(
+                                                                              (
+                                                                                  x,
+                                                                              ) =>
+                                                                                  x !==
+                                                                                  doc.id,
+                                                                          )
+                                                                        : [
+                                                                              ...prev,
+                                                                              doc.id,
+                                                                          ],
+                                                            )
+                                                        }
+                                                        onClick={(e) =>
+                                                            e.stopPropagation()
+                                                        }
+                                                        className="mr-4 h-2.5 w-2.5 shrink-0 rounded border-gray-200 cursor-pointer accent-black"
+                                                    />
+                                                )}
+                                                <span className="mr-2 shrink-0">
+                                                    {isError ? (
+                                                        <AlertCircle className="h-4 w-4 text-red-500" />
+                                                    ) : (
+                                                        <DocIcon
+                                                            fileType={
+                                                                doc.file_type
+                                                            }
+                                                        />
+                                                    )}
+                                                </span>
+                                                {renamingDocumentId ===
+                                                doc.id ? (
+                                                    <input
+                                                        autoFocus
+                                                        className="min-w-0 flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-300"
+                                                        value={
+                                                            renameDocumentValue
+                                                        }
+                                                        onClick={(e) =>
+                                                            e.stopPropagation()
+                                                        }
+                                                        onDragStart={(
+                                                            e,
+                                                        ) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                        }}
+                                                        onChange={(e) =>
+                                                            setRenameDocumentValue(
+                                                                e.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        onKeyDown={(e) => {
+                                                            if (
+                                                                e.key ===
+                                                                "Enter"
+                                                            )
+                                                                void submitDocumentRename(
+                                                                    doc.id,
+                                                                );
+                                                            if (
+                                                                e.key ===
+                                                                "Escape"
+                                                            ) {
+                                                                setRenamingDocumentId(
+                                                                    null,
+                                                                );
+                                                                setRenameDocumentValue(
+                                                                    "",
+                                                                );
+                                                            }
+                                                        }}
+                                                        onBlur={() =>
+                                                            void submitDocumentRename(
+                                                                doc.id,
+                                                            )
+                                                        }
+                                                    />
+                                                ) : (
+                                                    <span className="text-sm text-gray-800 truncate">
+                                                        {docName}
+                                                    </span>
+                                                )}
+                                                {doc.is_linked && (
+                                                    <span
+                                                        title={
+                                                            doc.linked_folder_name
+                                                                ? `Shared centrally from the Library folder "${doc.linked_folder_name}" — managed in Admin → Documents`
+                                                                : "Shared centrally from the Library — managed in Admin → Documents"
+                                                        }
+                                                        className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20"
+                                                    >
+                                                        {doc.linked_folder_name
+                                                            ? `Shared · ${doc.linked_folder_name}`
+                                                            : "Shared"}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="ml-auto w-20 shrink-0 text-xs text-gray-500 uppercase truncate">
+                                            {doc.file_type ?? (
+                                                <span className="text-gray-300">
+                                                    —
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="w-24 shrink-0 text-sm text-gray-500 truncate">
+                                            {doc.size_bytes != null ? (
+                                                formatBytes(doc.size_bytes)
+                                            ) : (
+                                                <span className="text-gray-300">
+                                                    —
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div
+                                            className="w-20 shrink-0 text-sm text-gray-500 flex items-center gap-1"
+                                            onClick={(e) =>
+                                                e.stopPropagation()
+                                            }
+                                        >
+                                            {hasVersions ? (
+                                                <button
+                                                    onClick={() =>
+                                                        void toggleVersions(
+                                                            doc.id,
+                                                        )
+                                                    }
+                                                    className={`flex items-center gap-1 rounded px-1 py-0.5 transition-colors ${APP_SURFACE_HOVER_CLASS}`}
+                                                >
+                                                    <span>
+                                                        {versionNumber}
+                                                    </span>
+                                                    {isVersionsOpen ? (
+                                                        <ChevronDown className="h-3 w-3 text-gray-400" />
+                                                    ) : (
+                                                        <ChevronRight className="h-3 w-3 text-gray-400" />
+                                                    )}
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-300 pl-1">
+                                                    —
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="w-32 shrink-0 text-sm text-gray-500 truncate">
+                                            {doc.created_at ? (
+                                                formatDate(doc.created_at)
+                                            ) : (
+                                                <span className="text-gray-300">
+                                                    —
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="w-32 shrink-0 text-sm text-gray-500 truncate">
+                                            {doc.updated_at ? (
+                                                formatDate(doc.updated_at)
+                                            ) : (
+                                                <span className="text-gray-300">
+                                                    —
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="w-8 shrink-0 flex justify-end">
+                                            {!isProcessing && (
+                                                <RowActions
+                                                    onRename={() => {
+                                                        setRenameDocumentValue(
+                                                            docName,
+                                                        );
+                                                        setRenamingDocumentId(
+                                                            doc.id,
+                                                        );
+                                                    }}
+                                                    renameLabel="Rename document"
+                                                    onDownload={() =>
+                                                        downloadDoc(doc.id)
+                                                    }
+                                                    onShowAllVersions={
+                                                        hasVersions &&
+                                                        !isVersionsOpen
+                                                            ? () =>
+                                                                  void toggleVersions(
+                                                                      doc.id,
+                                                                  )
+                                                            : undefined
+                                                    }
+                                                    onUploadNewVersion={() =>
+                                                        void handleUploadNewVersion(
+                                                            doc,
+                                                        )
+                                                    }
+                                                    onRemoveFromFolder={
+                                                        doc.folder_id
+                                                            ? () =>
+                                                                  handleRemoveDocFromFolder(
+                                                                      doc.id,
+                                                                  )
+                                                            : undefined
+                                                    }
+                                                    onDelete={() =>
+                                                        requestRemoveDoc(
+                                                            doc,
+                                                        )
+                                                    }
+                                                    deleteDisabled={isSharedDocument(
+                                                        doc,
+                                                    )}
+                                                />
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                        {isVersionsOpen && (
+                            <DocVersionHistory
+                                docId={doc.id}
+                                filename={docName}
+                                activeVersionNumber={versionNumber}
+                                loading={loadingVersionDocIds.has(doc.id)}
+                                versions={
+                                    versionsByDocId.get(doc.id)?.versions ??
+                                    []
+                                }
+                                currentVersionId={
+                                    versionsByDocId.get(doc.id)
+                                        ?.currentVersionId ?? null
+                                }
+                                depth={depth}
+                                onDownloadVersion={downloadDocVersion}
+                                onOpenVersion={(versionId, label) => {
+                                    setViewingDocVersion({
+                                        id: versionId,
+                                        label,
+                                    });
+                                    setViewingDoc(doc);
+                                }}
+                                onRenameVersion={(versionId, filename) =>
+                                    handleRenameVersion(
+                                        doc.id,
+                                        versionId,
+                                        filename,
+                                    )
+                                }
+                                onExtensionChangeBlocked={(filename) =>
+                                    setDocumentRenameWarning(
+                                        extensionChangeWarning(filename),
+                                    )
+                                }
+                            />
+                        )}
+                    </div>
+                );
+    }
+
     function renderLevel(parentId: string | null, depth: number) {
+        // Folders follow the same rule as documents: alphabetical ascending
+        // unless the user has explicitly sorted by name descending.
         const nameMultiplier =
-            enableHeaderFilters &&
-            sort?.key === "name" &&
-            sort.direction === "desc"
-                ? -1
-                : 1;
+            sort?.key === "name" && sort.direction === "desc" ? -1 : 1;
         const childFolders = folders
             .filter((f) => f.parent_folder_id === parentId)
             .sort((a, b) => a.name.localeCompare(b.name) * nameMultiplier);
-        const childDocs = filteredDocs.filter(
+        const allChildDocs = filteredDocs.filter(
             (d) => (d.folder_id ?? null) === parentId,
+        );
+
+        // VIRTUAL FOLDERS — centrally-linked documents grouped by their source
+        // Library folder.
+        //
+        // A linked document is ONE row shared across every project it is
+        // linked into, and `folder_id` is a single column, so it cannot sit in
+        // each of those projects' folder trees. Linked docs therefore arrive
+        // flat, which meant 31 files at the root of every group project. The
+        // backend now sends `linked_folder_name` (see
+        // lib/documentLinks.ts#loadLinkedDocumentsForProject) and we group on
+        // it here: read-only, no rename, no drag, no delete — the folder does
+        // not exist in this project and is managed in Admin → Documents.
+        const linkedGroups = new Map<string, Document[]>();
+        const childDocs: Document[] = [];
+        for (const doc of allChildDocs) {
+            const name =
+                parentId === null && doc.is_linked
+                    ? (doc.linked_folder_name ?? "").trim()
+                    : "";
+            if (name) {
+                const bucket = linkedGroups.get(name);
+                if (bucket) bucket.push(doc);
+                else linkedGroups.set(name, [doc]);
+            } else {
+                childDocs.push(doc);
+            }
+        }
+        const virtualFolders = [...linkedGroups.entries()].sort(
+            (a, b) => a[0].localeCompare(b[0]) * nameMultiplier,
         );
 
         return (
             <>
                 {parentId === null && renderUploadingDocumentRows(depth)}
                 {/* Files first */}
-                {childDocs.map((doc) => {
-                    const docName = doc.filename;
-                    const isProcessing =
-                        doc.status === "pending" || doc.status === "processing";
-                    const isError = doc.status === "error";
-                    const isVersionsOpen = expandedVersionDocIds.has(doc.id);
-                    const versionNumber = currentVersionNumber(doc);
-                    const hasVersions =
-                        typeof versionNumber === "number" && versionNumber > 1;
-                    const isVersionDragOver = dragOverVersionDocId === doc.id;
-                    const isUploadingVersion = uploadingVersionDocIds.has(
-                        doc.id,
-                    );
-                    const isSelected = selectedDocIds.includes(doc.id);
-                    const isDeletingDoc = deletingDocIds.has(doc.id);
-                    if (isDeletingDoc) {
-                        return renderDocumentActivityRow({
-                            key: `deleting-doc-${doc.id}`,
-                            filename: doc.filename,
-                            fileType: doc.file_type,
-                            depth,
-                            statusLabel: "Deleting...",
-                        });
-                    }
+                {childDocs.map((doc) => renderDocumentRow(doc, depth))}
+
+                {/* Virtual folders: linked documents, grouped by source. */}
+                {virtualFolders.map(([name, groupDocs]) => {
+                    const key = `linked:${name}`;
+                    const isExpanded = expandedFolderIds.has(key);
                     return (
-                        <div key={`doc-${doc.id}`}>
+                        <div key={`virtual-folder-${name}`}>
                             <div
-                                data-document-row
-                                draggable={renamingDocumentId !== doc.id}
-                                onDragStart={(e) => {
-                                    if (renamingDocumentId === doc.id) {
-                                        e.preventDefault();
-                                        return;
-                                    }
-                                    e.dataTransfer.setData(
-                                        "application/rose-doc",
-                                        doc.id,
-                                    );
-                                    e.dataTransfer.effectAllowed = "copyMove";
-                                }}
-                                onDragEnd={() => {
-                                    setDragOverRoot(false);
-                                    setDragOverFolderId(null);
-                                    setDragOverVersionDocId(null);
-                                }}
-                                onDragOver={(e) =>
-                                    handleDocumentVersionDragOver(e, doc.id)
+                                className="group grid cursor-pointer grid-cols-[minmax(0,1fr)_repeat(5,max-content)] items-center gap-x-6 rounded-lg px-3 py-2 hover:bg-gray-50"
+                                onClick={() =>
+                                    setExpandedFolderIds((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(key)) next.delete(key);
+                                        else next.add(key);
+                                        return next;
+                                    })
                                 }
-                                onDragLeave={handleDocumentVersionDragLeave}
-                                onDrop={(e) =>
-                                    handleDocumentVersionDrop(e, doc)
-                                }
-                                onClick={() => {
-                                    setViewingDocVersion(null);
-                                    setViewingDoc(doc);
-                                }}
-                                onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    closeRowActionMenus();
-                                    setContextMenu({
-                                        x: e.clientX,
-                                        y: e.clientY,
-                                        docId: doc.id,
-                                        folderId: null,
-                                        showFolderActions: false,
-                                    });
-                                }}
-                                className={`group flex h-10 min-w-max items-center pr-8 cursor-pointer transition-colors ${isVersionDragOver ? "bg-blue-50 ring-1 ring-inset ring-blue-200" : isSelected ? APP_SURFACE_ACTIVE_CLASS : APP_SURFACE_HOVER_CLASS}`}
                             >
-                                {(() => {
-                                    const rowBg = isVersionDragOver
-                                        ? "bg-blue-50"
-                                        : isSelected
-                                          ? APP_SURFACE_ACTIVE_CLASS
-                                          : stickyCellBg;
-                                    return (
-                                        <>
-                                            <div
-                                                className={`sticky left-0 z-[60] ${DOC_NAME_COL_W} ${rowBg} py-2 pl-4 pr-2 transition-colors ${isVersionDragOver || isSelected ? "" : APP_SURFACE_GROUP_HOVER_CLASS}`}
-                                                style={treeNameCellStyle(depth)}
-                                            >
-                                                <div className="flex items-center">
-                                                    {isProcessing ||
-                                                    isUploadingVersion ? (
-                                                        <Loader2 className="mr-4 h-2.5 w-2.5 animate-spin text-gray-400 shrink-0" />
-                                                    ) : doc.is_linked ? (
-                                                        // Centrally-linked docs are read-only here — no
-                                                        // selection so they can't be bulk-deleted (they
-                                                        // belong to the Library, managed in Admin →
-                                                        // Documents).
-                                                        <span
-                                                            title="Shared centrally — manage in Admin → Documents"
-                                                            className="mr-4 flex h-2.5 w-2.5 shrink-0 items-center justify-center"
-                                                        >
-                                                            <Link2 className="h-3 w-3 text-indigo-400" />
-                                                        </span>
-                                                    ) : (
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedDocIds.includes(
-                                                                doc.id,
-                                                            )}
-                                                            onChange={() =>
-                                                                setSelectedDocIds(
-                                                                    (prev) =>
-                                                                        prev.includes(
-                                                                            doc.id,
-                                                                        )
-                                                                            ? prev.filter(
-                                                                                  (
-                                                                                      x,
-                                                                                  ) =>
-                                                                                      x !==
-                                                                                      doc.id,
-                                                                              )
-                                                                            : [
-                                                                                  ...prev,
-                                                                                  doc.id,
-                                                                              ],
-                                                                )
-                                                            }
-                                                            onClick={(e) =>
-                                                                e.stopPropagation()
-                                                            }
-                                                            className="mr-4 h-2.5 w-2.5 shrink-0 rounded border-gray-200 cursor-pointer accent-black"
-                                                        />
-                                                    )}
-                                                    <span className="mr-2 shrink-0">
-                                                        {isError ? (
-                                                            <AlertCircle className="h-4 w-4 text-red-500" />
-                                                        ) : (
-                                                            <DocIcon
-                                                                fileType={
-                                                                    doc.file_type
-                                                                }
-                                                            />
-                                                        )}
-                                                    </span>
-                                                    {renamingDocumentId ===
-                                                    doc.id ? (
-                                                        <input
-                                                            autoFocus
-                                                            className="min-w-0 flex-1 text-sm text-gray-800 bg-transparent outline-none border-b border-gray-300"
-                                                            value={
-                                                                renameDocumentValue
-                                                            }
-                                                            onClick={(e) =>
-                                                                e.stopPropagation()
-                                                            }
-                                                            onDragStart={(
-                                                                e,
-                                                            ) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                            }}
-                                                            onChange={(e) =>
-                                                                setRenameDocumentValue(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            onKeyDown={(e) => {
-                                                                if (
-                                                                    e.key ===
-                                                                    "Enter"
-                                                                )
-                                                                    void submitDocumentRename(
-                                                                        doc.id,
-                                                                    );
-                                                                if (
-                                                                    e.key ===
-                                                                    "Escape"
-                                                                ) {
-                                                                    setRenamingDocumentId(
-                                                                        null,
-                                                                    );
-                                                                    setRenameDocumentValue(
-                                                                        "",
-                                                                    );
-                                                                }
-                                                            }}
-                                                            onBlur={() =>
-                                                                void submitDocumentRename(
-                                                                    doc.id,
-                                                                )
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <span className="text-sm text-gray-800 truncate">
-                                                            {docName}
-                                                        </span>
-                                                    )}
-                                                    {doc.is_linked && (
-                                                        <span
-                                                            title={
-                                                                doc.linked_folder_name
-                                                                    ? `Shared centrally from the Library folder "${doc.linked_folder_name}" — managed in Admin → Documents`
-                                                                    : "Shared centrally from the Library — managed in Admin → Documents"
-                                                            }
-                                                            className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20"
-                                                        >
-                                                            {doc.linked_folder_name
-                                                                ? `Shared · ${doc.linked_folder_name}`
-                                                                : "Shared"}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="ml-auto w-20 shrink-0 text-xs text-gray-500 uppercase truncate">
-                                                {doc.file_type ?? (
-                                                    <span className="text-gray-300">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="w-24 shrink-0 text-sm text-gray-500 truncate">
-                                                {doc.size_bytes != null ? (
-                                                    formatBytes(doc.size_bytes)
-                                                ) : (
-                                                    <span className="text-gray-300">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div
-                                                className="w-20 shrink-0 text-sm text-gray-500 flex items-center gap-1"
-                                                onClick={(e) =>
-                                                    e.stopPropagation()
-                                                }
-                                            >
-                                                {hasVersions ? (
-                                                    <button
-                                                        onClick={() =>
-                                                            void toggleVersions(
-                                                                doc.id,
-                                                            )
-                                                        }
-                                                        className={`flex items-center gap-1 rounded px-1 py-0.5 transition-colors ${APP_SURFACE_HOVER_CLASS}`}
-                                                    >
-                                                        <span>
-                                                            {versionNumber}
-                                                        </span>
-                                                        {isVersionsOpen ? (
-                                                            <ChevronDown className="h-3 w-3 text-gray-400" />
-                                                        ) : (
-                                                            <ChevronRight className="h-3 w-3 text-gray-400" />
-                                                        )}
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-gray-300 pl-1">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="w-32 shrink-0 text-sm text-gray-500 truncate">
-                                                {doc.created_at ? (
-                                                    formatDate(doc.created_at)
-                                                ) : (
-                                                    <span className="text-gray-300">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="w-32 shrink-0 text-sm text-gray-500 truncate">
-                                                {doc.updated_at ? (
-                                                    formatDate(doc.updated_at)
-                                                ) : (
-                                                    <span className="text-gray-300">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="w-8 shrink-0 flex justify-end">
-                                                {!isProcessing && (
-                                                    <RowActions
-                                                        onRename={() => {
-                                                            setRenameDocumentValue(
-                                                                docName,
-                                                            );
-                                                            setRenamingDocumentId(
-                                                                doc.id,
-                                                            );
-                                                        }}
-                                                        renameLabel="Rename document"
-                                                        onDownload={() =>
-                                                            downloadDoc(doc.id)
-                                                        }
-                                                        onShowAllVersions={
-                                                            hasVersions &&
-                                                            !isVersionsOpen
-                                                                ? () =>
-                                                                      void toggleVersions(
-                                                                          doc.id,
-                                                                      )
-                                                                : undefined
-                                                        }
-                                                        onUploadNewVersion={() =>
-                                                            void handleUploadNewVersion(
-                                                                doc,
-                                                            )
-                                                        }
-                                                        onRemoveFromFolder={
-                                                            doc.folder_id
-                                                                ? () =>
-                                                                      handleRemoveDocFromFolder(
-                                                                          doc.id,
-                                                                      )
-                                                                : undefined
-                                                        }
-                                                        onDelete={() =>
-                                                            requestRemoveDoc(
-                                                                doc,
-                                                            )
-                                                        }
-                                                        deleteDisabled={isSharedDocument(
-                                                            doc,
-                                                        )}
-                                                    />
-                                                )}
-                                            </div>
-                                        </>
-                                    );
-                                })()}
+                                <div
+                                    className="flex min-w-0 items-center"
+                                    style={treeNameCellStyle(depth)}
+                                >
+                                    <ChevronRight
+                                        className={`mr-1 h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                                    />
+                                    <SubfolderSvgIcon className="mr-2 h-4 w-4 shrink-0" />
+                                    <span className="truncate text-sm text-gray-800">
+                                        {name}
+                                    </span>
+                                    <span
+                                        title="Shared centrally from the Library — managed in Admin → Documents"
+                                        className="ml-2 inline-flex shrink-0 items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20"
+                                    >
+                                        Shared
+                                    </span>
+                                    <span className="ml-2 shrink-0 text-xs text-gray-400">
+                                        {groupDocs.length}
+                                    </span>
+                                </div>
+                                <div className="text-sm text-gray-400">—</div>
+                                <div className="text-sm text-gray-400">—</div>
+                                <div className="text-sm text-gray-400">—</div>
+                                <div className="text-sm text-gray-400">—</div>
+                                <div className="text-sm text-gray-400">—</div>
                             </div>
-                            {isVersionsOpen && (
-                                <DocVersionHistory
-                                    docId={doc.id}
-                                    filename={docName}
-                                    activeVersionNumber={versionNumber}
-                                    loading={loadingVersionDocIds.has(doc.id)}
-                                    versions={
-                                        versionsByDocId.get(doc.id)?.versions ??
-                                        []
-                                    }
-                                    currentVersionId={
-                                        versionsByDocId.get(doc.id)
-                                            ?.currentVersionId ?? null
-                                    }
-                                    depth={depth}
-                                    onDownloadVersion={downloadDocVersion}
-                                    onOpenVersion={(versionId, label) => {
-                                        setViewingDocVersion({
-                                            id: versionId,
-                                            label,
-                                        });
-                                        setViewingDoc(doc);
-                                    }}
-                                    onRenameVersion={(versionId, filename) =>
-                                        handleRenameVersion(
-                                            doc.id,
-                                            versionId,
-                                            filename,
-                                        )
-                                    }
-                                    onExtensionChangeBlocked={(filename) =>
-                                        setDocumentRenameWarning(
-                                            extensionChangeWarning(filename),
-                                        )
-                                    }
-                                />
-                            )}
+                            {isExpanded &&
+                                groupDocs.map((doc) =>
+                                    renderDocumentRow(doc, depth + 1),
+                                )}
                         </div>
                     );
                 })}
@@ -2082,7 +2167,10 @@ export function DocTable({
                     documentTypeValue(doc) === typeFilter,
             );
 
-        if (!enableHeaderFilters || !sort) return rows;
+        // Sort in every view, not only where the sortable column headers are
+        // shown. `sort` defaults to name/asc, so the Library and a project's
+        // document list are both alphabetical unless the user says otherwise.
+        if (!sort) return rows;
 
         return [...rows].sort((a, b) => {
             const multiplier = sort.direction === "asc" ? 1 : -1;

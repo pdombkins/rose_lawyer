@@ -477,12 +477,27 @@ project subfolders at once. Fix (not yet built): have
 `loadLinkedDocumentsForProject` return the source Library folder name and have
 DocTable render linked docs grouped under a read-only virtual folder.
 
-**Partly done 2026-07-31:** `loadLinkedDocumentsForProject` now returns
-`linked_folder_name`, and the "Shared" badge reads `Shared · Week 9 - change
-management`, so provenance is visible and 31 files at the project root are
-readable. The full virtual-folder grouping in `DocTable.tsx` is NOT done —
-that component is ~3,000 lines and renders every student's documents, so the
-tree change wants its own pass rather than being tacked on.
+**DONE 2026-07-31.** `loadLinkedDocumentsForProject` returns
+`linked_folder_name`; `DocTable.tsx` groups linked documents under **virtual
+folders** named after the source Library folder — read-only (no rename, drag,
+delete), collapsed by default, with a "Shared" badge and a document count.
+- The ~360-line document-row JSX was extracted verbatim from the
+  `childDocs.map()` body into `renderDocumentRow(doc, depth)` so the same row
+  renders inside a virtual folder. Behaviour unchanged; only the call site
+  moved. tsc + eslint clean.
+- Expansion state key is `linked:<folder name>` in the existing
+  `expandedFolderIds` set. Real folders are auto-expanded on load by the
+  effect at ~line 622; virtual ones deliberately are not.
+- Grouping applies at the project ROOT only (`parentId === null`), which is
+  where linked docs land — a linked doc has no `folder_id` in this project.
+
+**Library sort is alphabetical by default.** `sort` already defaulted to
+name/asc but both sort paths were gated on `enableHeaderFilters`, which only
+`LibraryWorkspace` sets — so documents came back in insertion order in the
+Library *and* in projects. Both gates removed: `filteredDocs` sorts whenever
+`sort` is set, and the folder `nameMultiplier` no longer checks the flag.
+Folders and documents are now ascending alphabetical everywhere unless the
+user sorts otherwise.
 
 ## 2026-07-30 — `ks.matters.shared_teaching` (NexaCare exempt from the persona filter)
 The persona filter matched on `tasks.assigned_to`, a single-owner column. On
