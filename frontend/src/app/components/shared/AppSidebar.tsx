@@ -214,10 +214,12 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                 {/* Nav items */}
                 {[
                     ...NAV_ITEMS,
-                    // Kendry & Slate practice-management system. Same origin,
-                    // same Supabase session — students are already signed in
-                    // when they land there.
-                    { href: "/firm/dashboard", label: "Kendry & Slate", icon: Building2 },
+                    // Kendry & Slate practice-management system. /workspace
+                    // is the Rose page that hosts the K&S app inside this
+                    // shell, so the sidebar stays put while a lawyer works a
+                    // matter. (/firm is the raw SPA the frame loads; going
+                    // there directly bounces back here — see RouteBridge.)
+                    { href: "/workspace", label: "Kendry & Slate", icon: Building2 },
                     ...(profile?.isAdmin
                         ? [{ href: "/admin", label: "Admin", icon: ShieldCheck }]
                         : []),
@@ -229,9 +231,9 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                               ? pathname === href
                               : pathname === href ||
                                 pathname.startsWith(href + "/");
-                    // /firm is the Kendry & Slate SPA, not a Next route — it
-                    // must be a full page load, not a client-side push.
-                    const isExternalApp = href.startsWith("/firm");
+                    // Everything in the sidebar is now a Rose route, K&S
+                    // included, so every item is a client-side push.
+                    const isExternalApp = false;
                     return (
                         <div key={href} className="py-0.5 px-2.5">
                             <button

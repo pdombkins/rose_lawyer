@@ -418,35 +418,45 @@ partner review takes 5–10 min, so an hour is ~5 activities. Both weeks were
 - Runsheets rewritten to the five-activity hour; `WEEK8_v2_RUNSHEET.md`
   renamed `WEEK8_RUNSHEET.md` (there is no v1 to distinguish from any more).
 
-## 2026-07-31 — Rose embedded in the K&S matter workspace
-A lawyer working a matter reaches for their AI tools without leaving the
-matter, so Rose opens in a **side panel on the K&S matter page** rather than
-being a separate destination. Peter's call: panel (not deep links, not a
-native rebuild), tabbed Assistant / Documents / Workflows.
+## 2026-07-31 — K&S runs INSIDE Rose's app shell
+First attempt was a Rose side panel on the matter page. Peter rejected it:
+"there isn't access to all Rose features, and it isn't integrated enough."
+He was right — a 680px drawer can only ever surface 3 of Rose's 12 features.
+**The panel is deleted.**
 
-- `ks-frontend/src/components/rose/RosePanel.tsx` — `useMatterRoseProject()`
-  resolves matter → Rose project from `ks.matter_projects`; `RosePanel` is a
-  Sheet with a tab strip and a same-origin iframe; `RosePanelButton` is what
-  `MatterDetail.tsx` renders in the header action bar (first, before WIP
-  Report).
-- **Why an iframe is safe here:** both apps are on rose.lawyer (K&S at
-  `/firm`), so the frame shares the Supabase session — no second login, no
-  token in the URL. The iframe is a normal Rose page load, so Rose applies its
-  usual project access checks; the panel cannot widen anything. `sandbox` omits
-  `allow-top-navigation` so nothing in the panel can navigate the host away.
-- **Rose hides its chrome when framed** — `frontend/src/app/(pages)/layout.tsx`
-  sets `isEmbedded` from `window.self !== window.top` (or `?embed=1`) and drops
-  `AppSidebar` + the mobile header. Detected from being framed rather than a
-  query param so it survives navigation inside the panel.
-- Rose sets no `X-Frame-Options`/`frame-ancestors` and has no middleware, so
-  same-origin framing works as-is. **Don't add a frame-ancestors header without
-  allowing 'self'** or the panel goes blank.
-- Tab `key={src}` on the iframe forces a reload on tab change instead of
-  pushing history into the frame.
+**The real problem:** `/firm` is a Route Handler serving the K&S SPA shell from
+Cloudflare's asset layer, deliberately OUTSIDE the `(pages)` layout. So
+crossing into K&S left Rose's React tree and took `AppSidebar` with it.
 
-### Three RLS/grant defects found while building it (migration `20260731_02`)
-`ks.matter_projects` shipped in `20260731_01` with **no RLS and no grant** —
-nothing had read it as a user before, only triggers as owner.
+**The fix — invert the nesting.** `frontend/src/app/(pages)/workspace/[[...slug]]/page.tsx`
+frames `/firm` from inside the `(pages)` layout, so Rose's twelve-item sidebar
+stays on the left while a lawyer works a matter and every Rose feature is one
+ordinary client-side push away.
+- **Why a wrapper path and not nesting `/firm` itself:** the K&S bundle is
+  built with `BrowserRouter basename="/firm"`, so its router only matches
+  paths under /firm. A page at /firm would shadow the URL the frame must load.
+  /workspace frames /firm — no change to the K&S build or the asset route, and
+  `/firm/assets/*` still hits Cloudflare before the Worker.
+- **URL sync:** `ks-frontend/src/components/RouteBridge.tsx` posts
+  `{type:'ks:route', path}` on every route change; the host mirrors it with
+  `replaceState`, so refresh and deep links land where you were. The host
+  accepts same-origin messages only and rejects any path not starting `/firm`.
+- **Direct hits bounce:** landing on `/firm/...` unframed redirects to
+  `/workspace/...`, preserving the path — otherwise you get bare K&S with no
+  way back, which is the whole bug.
+- **`iframe src` is set once** (useState initialiser). Re-deriving it per
+  render would reload K&S and lose its state on every host re-render.
+- K&S's marketing `Header` returns null when framed (`lib/isFramed.ts`) so
+  there aren't two navs stacked. Dashboard pages have their own headers and
+  are unaffected.
+- Sidebar item now `/workspace`, and `isExternalApp` is gone — every sidebar
+  entry is a Rose route again.
+- `sandbox` omits `allow-top-navigation`: nothing in K&S can navigate Rose away.
+
+### Three RLS/grant defects found while building the (now deleted) panel — migration `20260731_02`
+Kept, because they were real. `ks.matter_projects` shipped in `20260731_01`
+with **no RLS and no grant** — nothing had read it as a user before, only
+triggers as owner.
 1. RLS enabled (every other ks table has it).
 2. `grant select … to authenticated` — RLS picks ROWS, it does not grant table
    access. Without it the panel dies with "permission denied for table

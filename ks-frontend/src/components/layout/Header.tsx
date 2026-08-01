@@ -4,9 +4,15 @@ import { LogIn, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useProfile } from "@/contexts/ProfileContext";
+import { isFramed } from "@/lib/isFramed";
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Inside Rose's shell the sidebar is the navigation. Rendering the K&S
+  // marketing header as well would stack two navs and waste 64px of vertical
+  // space on every matter screen, so it is suppressed when framed.
+  if (isFramed()) return null;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">

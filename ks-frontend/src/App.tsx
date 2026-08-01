@@ -10,6 +10,7 @@ import About from "./pages/About";
 import Offices from "./pages/Offices";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RouteBridge from "./components/RouteBridge";
 
 // Lazy load non-critical pages
 const ProfileSelection = lazy(() => import("./pages/ProfileSelection"));
@@ -60,6 +61,9 @@ const App = () => (
             therefore a Supabase auth session — with Rose. Clean URLs also
             mean the routes below can be linked to directly from Rose. */}
         <BrowserRouter basename="/firm">
+          {/* Keeps the Rose host URL in step, and redirects direct /firm hits
+              into the Rose shell so the sidebar is never lost. */}
+          <RouteBridge />
           <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-burgundy"></div>
