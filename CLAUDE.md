@@ -418,6 +418,47 @@ partner review takes 5–10 min, so an hour is ~5 activities. Both weeks were
 - Runsheets rewritten to the five-activity hour; `WEEK8_v2_RUNSHEET.md`
   renamed `WEEK8_RUNSHEET.md` (there is no v1 to distinguish from any more).
 
+## 2026-07-31 — Rose embedded in the K&S matter workspace
+A lawyer working a matter reaches for their AI tools without leaving the
+matter, so Rose opens in a **side panel on the K&S matter page** rather than
+being a separate destination. Peter's call: panel (not deep links, not a
+native rebuild), tabbed Assistant / Documents / Workflows.
+
+- `ks-frontend/src/components/rose/RosePanel.tsx` — `useMatterRoseProject()`
+  resolves matter → Rose project from `ks.matter_projects`; `RosePanel` is a
+  Sheet with a tab strip and a same-origin iframe; `RosePanelButton` is what
+  `MatterDetail.tsx` renders in the header action bar (first, before WIP
+  Report).
+- **Why an iframe is safe here:** both apps are on rose.lawyer (K&S at
+  `/firm`), so the frame shares the Supabase session — no second login, no
+  token in the URL. The iframe is a normal Rose page load, so Rose applies its
+  usual project access checks; the panel cannot widen anything. `sandbox` omits
+  `allow-top-navigation` so nothing in the panel can navigate the host away.
+- **Rose hides its chrome when framed** — `frontend/src/app/(pages)/layout.tsx`
+  sets `isEmbedded` from `window.self !== window.top` (or `?embed=1`) and drops
+  `AppSidebar` + the mobile header. Detected from being framed rather than a
+  query param so it survives navigation inside the panel.
+- Rose sets no `X-Frame-Options`/`frame-ancestors` and has no middleware, so
+  same-origin framing works as-is. **Don't add a frame-ancestors header without
+  allowing 'self'** or the panel goes blank.
+- Tab `key={src}` on the iframe forces a reload on tab change instead of
+  pushing history into the frame.
+
+### Three RLS/grant defects found while building it (migration `20260731_02`)
+`ks.matter_projects` shipped in `20260731_01` with **no RLS and no grant** —
+nothing had read it as a user before, only triggers as owner.
+1. RLS enabled (every other ks table has it).
+2. `grant select … to authenticated` — RLS picks ROWS, it does not grant table
+   access. Without it the panel dies with "permission denied for table
+   matter_projects".
+3. The first policy tested the matter only, so every student could read all six
+   NexaCare mapping rows and the panel's "take the first" pointed five of six
+   students at another group's project. Now also requires
+   `ks.is_in_group(group_id)`. New helper `ks.is_in_group()` is SECURITY
+   DEFINER and matches by uid OR email, like `lib/groupAccess.ts`.
+Verified live, one student per group: each resolves NexaCare to their own
+group's project.
+
 ## 2026-07-31 — A Rose project for every K&S matter (`ks.matter_projects`)
 Migration `ks_matter_project_sync` (**applied**) + mirrored in
 `backend/migrations/20260731_01_ks_matter_project_sync.sql`.

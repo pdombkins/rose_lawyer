@@ -298,6 +298,38 @@ export type Database = {
           },
         ]
       }
+      matter_projects: {
+        Row: {
+          matter_id: string
+          project_id: string
+          auto_created: boolean
+          group_id: string | null
+          created_at: string
+        }
+        Insert: {
+          matter_id: string
+          project_id: string
+          auto_created?: boolean
+          group_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          matter_id?: string
+          project_id?: string
+          auto_created?: boolean
+          group_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matter_projects_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "matters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matters: {
         Row: {
           client_id: string

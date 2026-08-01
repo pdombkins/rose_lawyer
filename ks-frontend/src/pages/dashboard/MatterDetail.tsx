@@ -56,6 +56,7 @@ import {
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { RosePanelButton } from "@/components/rose/RosePanel";
 
 interface TaskAssignment {
   user_id: string;
@@ -1614,6 +1615,9 @@ const [documents, setDocuments] = useState<Document[]>([]);
           </div>
           
           <div className="flex items-center space-x-2">
+            {/* Rose, embedded — the AI tools a lawyer would reach for while
+                working this matter, without leaving it. */}
+            <RosePanelButton matterId={matter?.id} matterTitle={matter?.title} />
             <Button variant="outline" size="sm" onClick={generateWIPReportExcel}>
               <Download className="w-4 h-4 mr-2" />
               WIP Report
