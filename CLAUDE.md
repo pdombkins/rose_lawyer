@@ -418,6 +418,45 @@ partner review takes 5–10 min, so an hour is ~5 activities. Both weeks were
 - Runsheets rewritten to the five-activity hour; `WEEK8_v2_RUNSHEET.md`
   renamed `WEEK8_RUNSHEET.md` (there is no v1 to distinguish from any more).
 
+## 2026-07-31 — Rose agents/workflows/chat can now CHANGE K&S matters
+Peter: "I want the agents, workflows and libraries in Rose to directly
+interface with and change the tasks, time recording and other aspects of K&S
+matters." Scope chosen: **everything**; on the shared matter, **own rows only**.
+
+`backend/src/lib/ksWrites.ts` — 13 new write functions, all approval-gated:
+tasks (create/update/delete), assignments (assign/unassign), time
+(update/delete — record already existed), calendar (create/update/delete),
+`ks_update_matter`, matter documents (add/delete). Read the header before
+touching it; three rules carry the safety.
+
+- **Backend is service-role, so RLS does not apply.** Every path calls
+  `assertMatterAccess()`. `assertMatterWritable()` = membership + "is this the
+  shared matter"; `assertRowWritable()` = the row-level guard.
+- **Shared matter is APPEND-ONLY.** NexaCare (`shared_teaching`) is worked by
+  36 students against the same 49 tasks. Anyone may add; only the creator may
+  change or delete. **Fails closed**: all 49 seeded tasks and 23 seeded time
+  entries have `performed_by IS NULL`, so `performed_by !== userId` rejects
+  them and the Week-9 evidence base stays reproducible. `ks_update_matter`
+  refuses the shared matter outright — matter-level fields aren't row-owned,
+  so the ownership rule can't protect them.
+- **⚠️ FK TRAP, cost me a full break:** `performed_by` → `auth.users`, but
+  `tasks.created_by`, `tasks.assigned_to`, `calendar_events.created_by`,
+  `documents.uploaded_by`, `time_entries.user_id` and
+  `task_assignments.user_id` all → **`ks.profiles` (the personas)**. Putting an
+  auth user id in any of them violates the FK and the write fails outright.
+  First version set `created_by: userId` and would have failed on every task
+  create. Now: the assignee persona, or null.
+- Role allowlists (`agents/types.ts`): **drafting** gets all 13; **intake**
+  gets only create-task/assign/create-event; **research, review, verify stay
+  read-only**. All 13 in `WRITE_TOOLS`, so any plan containing one stops at the
+  approval gate.
+- `streaming.ts` needed no edit — it already spreads `...KS_TOOLS`, so schemas
+  become chat-available automatically.
+- **Verified live end to end** (create → guard → recompute → cleanup, no
+  residue): append to shared matter OK; seeded row blocked; own row allowed;
+  a 3h @ $600 entry moved matter fees 151,615 → 153,415 and back, so the
+  statement-trigger recompute chain fires correctly from these writes.
+
 ## 2026-07-31 — K&S runs INSIDE Rose's app shell
 First attempt was a Rose side panel on the matter page. Peter rejected it:
 "there isn't access to all Rose features, and it isn't integrated enough."

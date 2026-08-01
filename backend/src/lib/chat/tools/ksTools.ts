@@ -21,9 +21,17 @@
  * trivial way to read another group's assessment data, which would defeat the
  * RLS work entirely.
  *
- * `ks_record_time_entry` is the only write. It re-checks membership, stamps
- * `performed_by` with the real student (never the persona), and is listed in
- * WRITE_TOOLS so any agent plan containing it hits the approval gate.
+ * The write tools (`ks_record_time_entry` plus the task / assignment / time /
+ * calendar / matter / document writes implemented in lib/ksWrites.ts) re-check
+ * membership, stamp `performed_by` with the real student (never the persona),
+ * and are all listed in WRITE_TOOLS so any agent plan containing one hits the
+ * approval gate.
+ *
+ * The shared teaching matter (NexaCare) is append-only: anyone may add rows to
+ * it, but only the person who created a row may change or delete it, and its
+ * matter-level fields cannot be changed at all. That is enforced in
+ * lib/ksWrites.ts (`assertRowWritable`), not here — the tool descriptions just
+ * say so, so the model does not plan work that is bound to fail.
  */
 
 export const KS_TOOL_NAMES = {
@@ -33,6 +41,19 @@ export const KS_TOOL_NAMES = {
   timeLedger: "ks_time_ledger",
   listStaff: "ks_list_staff",
   recordTimeEntry: "ks_record_time_entry",
+  createTask: "ks_create_task",
+  updateTask: "ks_update_task",
+  deleteTask: "ks_delete_task",
+  assignTask: "ks_assign_task",
+  unassignTask: "ks_unassign_task",
+  updateTimeEntry: "ks_update_time_entry",
+  deleteTimeEntry: "ks_delete_time_entry",
+  createEvent: "ks_create_event",
+  updateEvent: "ks_update_event",
+  deleteEvent: "ks_delete_event",
+  updateMatter: "ks_update_matter",
+  addMatterDocument: "ks_add_matter_document",
+  deleteMatterDocument: "ks_delete_matter_document",
 } as const;
 
 export const KS_READ_TOOL_NAMES: string[] = [
@@ -174,6 +195,299 @@ export const KS_TOOLS = [
           billable: { type: "boolean", description: "Whether the time is billable (default true)." },
         },
         required: ["matter_id", "fee_earner_name", "hours", "description"],
+      },
+    },
+  },
+
+  // ── writes (lib/ksWrites.ts) ───────────────────────────────────────────
+  // All approval-gated. On the shared teaching matter (NexaCare) you may add
+  // new rows freely but may only change or delete rows you created yourself;
+  // its matter-level fields are fixed. Your own group's matter is unrestricted.
+
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.createTask,
+      description:
+        "Create a task on a Kendry & Slate matter. WRITES to the practice-management system and requires approval before it runs. Adding is always permitted, including on the shared NexaCare teaching matter. Use ks_list_tasks first to avoid duplicating an existing task, and ks_list_staff for exact fee-earner names.",
+      parameters: {
+        type: "object",
+        properties: {
+          matter_id: { type: "string", description: "The matter's id (from ks_list_matters)." },
+          title: { type: "string", description: "Short task title." },
+          description: { type: "string", description: "Optional longer description of the work." },
+          status: {
+            type: "string",
+            description:
+              "One of: not_started, in_progress, completed, blocked, on_hold. Defaults to not_started.",
+          },
+          priority: { type: "string", description: "Priority (e.g. low, medium, high). Defaults to medium." },
+          workstream: { type: "string", description: "Optional workstream the task belongs to." },
+          phase: { type: "string", description: "Optional matter phase the task belongs to." },
+          commencement_date: { type: "string", description: "Optional start date, ISO (YYYY-MM-DD)." },
+          due_date: { type: "string", description: "Optional due date, ISO (YYYY-MM-DD)." },
+          estimated_total_hours: {
+            type: "number",
+            description: "Estimated hours for the task. Defaults to 0.",
+          },
+          assigned_to_name: {
+            type: "string",
+            description:
+              "Optional fee earner to own the task (e.g. 'Aisha Rahman'). Must match exactly one person.",
+          },
+        },
+        required: ["matter_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.updateTask,
+      description:
+        "Update fields on an existing Kendry & Slate task — status, dates, estimate, owner, description. WRITES and requires approval. On the shared NexaCare teaching matter this only works on tasks you created yourself; the seeded 49 tasks are fixed for every group, so create a new task instead of amending one. Only the fields you supply are changed; setting status to 'completed' stamps the completion time.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "The task's id (from ks_list_tasks)." },
+          title: { type: "string", description: "New title." },
+          description: { type: "string", description: "New description." },
+          status: {
+            type: "string",
+            description: "One of: not_started, in_progress, completed, blocked, on_hold.",
+          },
+          priority: { type: "string", description: "New priority (e.g. low, medium, high)." },
+          workstream: { type: "string", description: "New workstream." },
+          phase: { type: "string", description: "New phase." },
+          commencement_date: { type: "string", description: "New start date, ISO (YYYY-MM-DD)." },
+          due_date: { type: "string", description: "New due date, ISO (YYYY-MM-DD)." },
+          estimated_total_hours: { type: "number", description: "New estimated hours." },
+          assigned_to_name: {
+            type: "string",
+            description: "Reassign the task to this fee earner. Must match exactly one person.",
+          },
+        },
+        required: ["task_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.deleteTask,
+      description:
+        "Delete a Kendry & Slate task. WRITES and requires approval. On the shared NexaCare teaching matter you may only delete tasks you created yourself. Deleting removes the task's assignments and history with it — prefer setting status to 'blocked' or 'on_hold' unless the user has asked for deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "The task's id (from ks_list_tasks)." },
+        },
+        required: ["task_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.assignTask,
+      description:
+        "Assign a fee earner to a Kendry & Slate task, or update their hours on an existing assignment. WRITES and requires approval. This is a change to the task, so on the shared NexaCare teaching matter it only works on tasks you created yourself. A task may carry several assignees; this adds or updates one of them without disturbing the others. Use ks_list_staff for exact names.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "The task's id." },
+          fee_earner_name: {
+            type: "string",
+            description: "The fee earner to assign (e.g. 'Mia Rossi'). Must match exactly one person.",
+          },
+          estimated_hours: {
+            type: "number",
+            description: "Hours this person is expected to spend. Defaults to 0 on a new assignment.",
+          },
+          actual_hours: {
+            type: "number",
+            description:
+              "Hours actually spent. Prefer ks_record_time_entry for real time recording — this is the assignment aggregate.",
+          },
+        },
+        required: ["task_id", "fee_earner_name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.unassignTask,
+      description:
+        "Remove a fee earner's assignment from a Kendry & Slate task. WRITES and requires approval. On the shared NexaCare teaching matter this only works on tasks you created yourself. Time entries already booked are not removed — only the assignment.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "The task's id." },
+          fee_earner_name: {
+            type: "string",
+            description: "The fee earner to unassign. Must match exactly one person.",
+          },
+        },
+        required: ["task_id", "fee_earner_name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.updateTimeEntry,
+      description:
+        "Amend an existing time entry — hours, date, narrative or billable flag. WRITES to the firm's time ledger and requires approval. On the shared NexaCare teaching matter you may only amend entries you recorded yourself; the seeded ledger is fixed. Amending recorded time is a conduct-sensitive act: only do it when the user has explicitly asked, and keep the narrative honest about the correction.",
+      parameters: {
+        type: "object",
+        properties: {
+          time_entry_id: { type: "string", description: "The time entry's id (from ks_time_ledger)." },
+          hours: { type: "number", description: "New hours. Must be non-zero; may be negative for a correction." },
+          date: { type: "string", description: "New entry date, ISO (YYYY-MM-DD)." },
+          description: { type: "string", description: "New narrative for the entry." },
+          billable: { type: "boolean", description: "Whether the time is billable." },
+        },
+        required: ["time_entry_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.deleteTimeEntry,
+      description:
+        "Delete a time entry from the Kendry & Slate ledger. WRITES and requires approval. On the shared NexaCare teaching matter you may only delete entries you recorded yourself. Deleting recorded time destroys the audit trail — prefer a negative correcting entry via ks_record_time_entry unless the user has specifically asked for deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          time_entry_id: { type: "string", description: "The time entry's id (from ks_time_ledger)." },
+        },
+        required: ["time_entry_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.createEvent,
+      description:
+        "Create a calendar event on a Kendry & Slate matter — a client touchpoint, review, hearing or internal checkpoint. WRITES and requires approval. Adding is always permitted, including on the shared NexaCare teaching matter. Times are ISO 8601 and end_time must be after start_time.",
+      parameters: {
+        type: "object",
+        properties: {
+          matter_id: { type: "string", description: "The matter's id." },
+          title: { type: "string", description: "Event title." },
+          start_time: { type: "string", description: "Start, ISO 8601 (e.g. 2026-08-05T09:00:00+10:00)." },
+          end_time: { type: "string", description: "End, ISO 8601. Must be after start_time." },
+          description: { type: "string", description: "Optional agenda or purpose." },
+          attendee_names: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional list of attendee names, recorded as free text.",
+          },
+        },
+        required: ["matter_id", "title", "start_time", "end_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.updateEvent,
+      description:
+        "Update a Kendry & Slate calendar event — retitle, reschedule, change the agenda or attendees. WRITES and requires approval. On the shared NexaCare teaching matter you may only change events you created yourself. Only the fields you supply are changed; attendee_names replaces the whole attendee list.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "The event's id." },
+          title: { type: "string", description: "New title." },
+          description: { type: "string", description: "New agenda or purpose." },
+          start_time: { type: "string", description: "New start, ISO 8601." },
+          end_time: { type: "string", description: "New end, ISO 8601." },
+          attendee_names: {
+            type: "array",
+            items: { type: "string" },
+            description: "Replacement attendee list (supply every attendee, not just the additions).",
+          },
+        },
+        required: ["event_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.deleteEvent,
+      description:
+        "Delete a Kendry & Slate calendar event. WRITES and requires approval. On the shared NexaCare teaching matter you may only delete events you created yourself.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "The event's id." },
+        },
+        required: ["event_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.updateMatter,
+      description:
+        "Update matter-level details on a Kendry & Slate matter: description, status, matter_type, fee_type, fixed_fee, hourly_rate, start_date, end_date. No other field is editable. WRITES and requires approval. This does NOT work on the shared NexaCare teaching matter at all — its matter-level details are fixed so all six groups see the same case; you can only change your own group's matter. Changing fee_type or the fee figures alters how the matter is costed, so confirm with the user first.",
+      parameters: {
+        type: "object",
+        properties: {
+          matter_id: { type: "string", description: "The matter's id (from ks_list_matters)." },
+          description: { type: "string", description: "New matter description." },
+          status: { type: "string", description: "New matter status (e.g. active, on_hold, closed)." },
+          matter_type: { type: "string", description: "New matter type." },
+          fee_type: { type: "string", description: "Fee basis: hourly_rates or fixed_fee." },
+          fixed_fee: { type: "number", description: "Fixed fee amount (AUD), when fee_type is fixed_fee." },
+          hourly_rate: { type: "number", description: "Matter hourly rate (AUD), when fee_type is hourly_rates." },
+          start_date: { type: "string", description: "Matter start date, ISO (YYYY-MM-DD)." },
+          end_date: { type: "string", description: "Matter end date, ISO (YYYY-MM-DD)." },
+        },
+        required: ["matter_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.addMatterDocument,
+      description:
+        "Register a document against a Kendry & Slate matter (and optionally a task) — this records the document in the matter file; it does not upload a file. WRITES and requires approval. Adding is always permitted, including on the shared NexaCare teaching matter. Any task_id supplied must belong to the same matter.",
+      parameters: {
+        type: "object",
+        properties: {
+          matter_id: { type: "string", description: "The matter's id." },
+          title: { type: "string", description: "Document title as it should appear in the matter file." },
+          task_id: {
+            type: "string",
+            description: "Optional task the document relates to. Must belong to the same matter.",
+          },
+          description: { type: "string", description: "Optional description of the document's purpose." },
+          file_name: { type: "string", description: "Optional file name, if there is an underlying file." },
+          file_type: { type: "string", description: "Optional file type (e.g. pdf, docx)." },
+        },
+        required: ["matter_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: KS_TOOL_NAMES.deleteMatterDocument,
+      description:
+        "Remove a document record from a Kendry & Slate matter file. WRITES and requires approval. On the shared NexaCare teaching matter you may only delete document records you created yourself.",
+      parameters: {
+        type: "object",
+        properties: {
+          document_id: { type: "string", description: "The K&S document record's id." },
+        },
+        required: ["document_id"],
       },
     },
   },

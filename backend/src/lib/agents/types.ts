@@ -69,6 +69,14 @@ function roleToolset(role: AgentRole, jadeApproved: boolean): string[] {
                 // K&S: enough to identify the matter being worked on.
                 "ks_list_matters",
                 "ks_get_matter",
+                // Intake sets work up — it may create tasks, put a name
+                // against them and book a touchpoint in the calendar. It may
+                // NOT amend the record (no update/delete, no time, no matter
+                // fields); that is drafting's job. All three are in
+                // WRITE_TOOLS, so a plan containing them is approval-gated.
+                "ks_create_task",
+                "ks_assign_task",
+                "ks_create_event",
             ];
         case "research":
             return [
@@ -116,9 +124,24 @@ function roleToolset(role: AgentRole, jadeApproved: boolean): string[] {
                 "ks_list_tasks",
                 "ks_time_ledger",
                 "ks_list_staff",
-                // The only K&S write. In WRITE_TOOLS, so any plan containing
-                // it is approval-gated (C030).
+                // K&S writes — drafting is the only role that may change the
+                // matter record. All of these are in WRITE_TOOLS, so any plan
+                // containing one is approval-gated (C030), and ksWrites.ts
+                // keeps the shared NexaCare matter append-only.
                 "ks_record_time_entry",
+                "ks_create_task",
+                "ks_update_task",
+                "ks_delete_task",
+                "ks_assign_task",
+                "ks_unassign_task",
+                "ks_update_time_entry",
+                "ks_delete_time_entry",
+                "ks_create_event",
+                "ks_update_event",
+                "ks_delete_event",
+                "ks_update_matter",
+                "ks_add_matter_document",
+                "ks_delete_matter_document",
             ];
         case "review":
             return [
@@ -176,9 +199,23 @@ export const WRITE_TOOLS = new Set([
     // C076 — list mutations gate plans behind approval too.
     "add_list_item",
     "update_list_item_status",
-    // Writes to the K&S time ledger. Deliberately gated: the ledger is
-    // assessment data, and Week 8 treats it as evidence of conduct.
+    // Writes to the K&S matter record — time, tasks, assignments, calendar,
+    // matter fields and documents. Deliberately gated: this is assessment
+    // data, and Week 8 treats the time ledger as evidence of conduct.
     "ks_record_time_entry",
+    "ks_create_task",
+    "ks_update_task",
+    "ks_delete_task",
+    "ks_assign_task",
+    "ks_unassign_task",
+    "ks_update_time_entry",
+    "ks_delete_time_entry",
+    "ks_create_event",
+    "ks_update_event",
+    "ks_delete_event",
+    "ks_update_matter",
+    "ks_add_matter_document",
+    "ks_delete_matter_document",
 ]);
 
 export function planNeedsApproval(plan: AgentPlan): boolean {

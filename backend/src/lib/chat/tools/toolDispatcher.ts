@@ -85,6 +85,21 @@ import {
   ksListStaff,
   ksRecordTimeEntry,
 } from "../../ks";
+import {
+  ksCreateTask,
+  ksUpdateTask,
+  ksDeleteTask,
+  ksAssignTask,
+  ksUnassignTask,
+  ksUpdateTimeEntry,
+  ksDeleteTimeEntry,
+  ksCreateEvent,
+  ksUpdateEvent,
+  ksDeleteEvent,
+  ksUpdateMatter,
+  ksAddMatterDocument,
+  ksDeleteMatterDocument,
+} from "../../ksWrites";
 import { convertedPdfKey } from "../../convert";
 import { contentTypeForDocumentType } from "../../documentTypes";
 import { buildDownloadUrl } from "../../downloadTokens";
@@ -1116,6 +1131,167 @@ export async function runToolCalls(
                 hours: Number(args.hours),
                 description: str("description") ?? "",
                 billable: args.billable !== false,
+              }),
+            );
+            break;
+
+          // K&S writes (lib/ksWrites.ts). Scope, the shared-teaching
+          // append-only rule and `performed_by` stamping are all enforced in
+          // there — do not re-check or bypass them here.
+          case KS_TOOL_NAMES.createTask:
+            content = JSON.stringify(
+              await ksCreateTask(userId, {
+                matter_id: str("matter_id") ?? "",
+                title: str("title") ?? "",
+                description: str("description"),
+                status: str("status"),
+                priority: str("priority"),
+                workstream: str("workstream"),
+                phase: str("phase"),
+                commencement_date: str("commencement_date"),
+                due_date: str("due_date"),
+                estimated_total_hours:
+                  typeof args.estimated_total_hours === "number"
+                    ? (args.estimated_total_hours as number)
+                    : undefined,
+                assigned_to_name: str("assigned_to_name"),
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.updateTask:
+            content = JSON.stringify(
+              await ksUpdateTask(userId, {
+                task_id: str("task_id") ?? "",
+                title: str("title"),
+                description: str("description"),
+                status: str("status"),
+                priority: str("priority"),
+                workstream: str("workstream"),
+                phase: str("phase"),
+                commencement_date: str("commencement_date"),
+                due_date: str("due_date"),
+                estimated_total_hours:
+                  typeof args.estimated_total_hours === "number"
+                    ? (args.estimated_total_hours as number)
+                    : undefined,
+                assigned_to_name: str("assigned_to_name"),
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.deleteTask:
+            content = JSON.stringify(
+              await ksDeleteTask(userId, { task_id: str("task_id") ?? "" }),
+            );
+            break;
+          case KS_TOOL_NAMES.assignTask:
+            content = JSON.stringify(
+              await ksAssignTask(userId, {
+                task_id: str("task_id") ?? "",
+                fee_earner_name: str("fee_earner_name") ?? "",
+                estimated_hours:
+                  typeof args.estimated_hours === "number"
+                    ? (args.estimated_hours as number)
+                    : undefined,
+                actual_hours:
+                  typeof args.actual_hours === "number"
+                    ? (args.actual_hours as number)
+                    : undefined,
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.unassignTask:
+            content = JSON.stringify(
+              await ksUnassignTask(userId, {
+                task_id: str("task_id") ?? "",
+                fee_earner_name: str("fee_earner_name") ?? "",
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.updateTimeEntry:
+            content = JSON.stringify(
+              await ksUpdateTimeEntry(userId, {
+                time_entry_id: str("time_entry_id") ?? "",
+                hours:
+                  typeof args.hours === "number" ? (args.hours as number) : undefined,
+                date: str("date"),
+                description: str("description"),
+                billable:
+                  typeof args.billable === "boolean"
+                    ? (args.billable as boolean)
+                    : undefined,
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.deleteTimeEntry:
+            content = JSON.stringify(
+              await ksDeleteTimeEntry(userId, {
+                time_entry_id: str("time_entry_id") ?? "",
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.createEvent:
+            content = JSON.stringify(
+              await ksCreateEvent(userId, {
+                matter_id: str("matter_id") ?? "",
+                title: str("title") ?? "",
+                start_time: str("start_time") ?? "",
+                end_time: str("end_time") ?? "",
+                description: str("description"),
+                attendee_names: Array.isArray(args.attendee_names)
+                  ? (args.attendee_names as unknown[]).filter(
+                      (v): v is string => typeof v === "string",
+                    )
+                  : undefined,
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.updateEvent:
+            content = JSON.stringify(
+              await ksUpdateEvent(userId, {
+                event_id: str("event_id") ?? "",
+                title: str("title"),
+                description: str("description"),
+                start_time: str("start_time"),
+                end_time: str("end_time"),
+                attendee_names: Array.isArray(args.attendee_names)
+                  ? (args.attendee_names as unknown[]).filter(
+                      (v): v is string => typeof v === "string",
+                    )
+                  : undefined,
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.deleteEvent:
+            content = JSON.stringify(
+              await ksDeleteEvent(userId, { event_id: str("event_id") ?? "" }),
+            );
+            break;
+          case KS_TOOL_NAMES.updateMatter:
+            // ksUpdateMatter validates the extra keys against MATTER_FIELDS
+            // and rejects anything else, so the whole object goes through.
+            content = JSON.stringify(
+              await ksUpdateMatter(userId, {
+                ...args,
+                matter_id: str("matter_id") ?? "",
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.addMatterDocument:
+            content = JSON.stringify(
+              await ksAddMatterDocument(userId, {
+                matter_id: str("matter_id") ?? "",
+                title: str("title") ?? "",
+                task_id: str("task_id"),
+                description: str("description"),
+                file_name: str("file_name"),
+                file_type: str("file_type"),
+              }),
+            );
+            break;
+          case KS_TOOL_NAMES.deleteMatterDocument:
+            content = JSON.stringify(
+              await ksDeleteMatterDocument(userId, {
+                document_id: str("document_id") ?? "",
               }),
             );
             break;

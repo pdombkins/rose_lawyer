@@ -233,9 +233,12 @@ export async function runLLMStream(params: {
     ...TABULAR_ASK_TOOLS,
     // C076 — Lists tools only make sense with a matter in context.
     ...(projectId ? LIST_TOOLS : []),
-    // Kendry & Slate practice-management data. Always offered: the K&S
-    // matters are the course case study, and scope is enforced per user
-    // inside lib/ks.ts rather than by withholding the tools.
+    // Kendry & Slate practice-management data, reads and writes. Always
+    // offered: the K&S matters are the course case study, and scope is
+    // enforced per user inside lib/ks.ts and lib/ksWrites.ts rather than by
+    // withholding the tools. KS_TOOLS is the full set, so the task, time,
+    // calendar, matter and document writes are available in the assistant as
+    // well as to agents.
     ...KS_TOOLS,
   ];
   let activeTools = extraTools?.length
