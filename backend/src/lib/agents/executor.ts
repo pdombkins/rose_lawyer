@@ -146,7 +146,17 @@ async function executeRun(runId: string): Promise<void> {
     }
 
     const apiKeys = await getUserApiKeys(run.owner_id, db);
-    const model = resolveModel(run.model, DEFAULT_MAIN_MODEL);
+    // Clamp to the admin allow-list here as well as at run creation. A run
+    // recovered after a restart, or created before the list changed, must not
+    // keep calling a model the instructor has since removed — and this model
+    // drives every step AND the partner review.
+    const { resolveModelForUser } = await import("../modelAccess");
+    const model = await resolveModelForUser(
+        db,
+        run.owner_id,
+        run.model,
+        DEFAULT_MAIN_MODEL,
+    );
     const blueprint =
         run.blueprint && typeof run.blueprint === "object"
             ? (run.blueprint as WorkflowBlueprint)

@@ -418,6 +418,47 @@ partner review takes 5–10 min, so an hour is ~5 activities. Both weeks were
 - Runsheets rewritten to the five-activity hour; `WEEK8_v2_RUNSHEET.md`
   renamed `WEEK8_RUNSHEET.md` (there is no v1 to distinguish from any more).
 
+## 2026-07-31 — Admin model allow-list now binds every non-admin, everywhere
+Peter asked me to confirm the Admin → allowed-models setting applies to all
+non-admins on all features. It did not, in two ways. Both fixed.
+
+**1. It was keyed on group membership.** `isRestrictedStudent()` was
+`!isAdmin && listUserGroupIds().length > 0`, so any user added outside a
+`user_group` was silently unrestricted — and every account is groupless
+between creation and being added to a group. Now simply `!isAdmin`.
+`listUserGroupIds` import dropped from modelAccess.ts.
+
+**2. The workflow machinery bypassed the list entirely.**
+`blueprintModel()` and `/compile` called bare
+`resolveModel(null, DEFAULT_MAIN_MODEL)`, and `routes/workflows.ts` created
+agent runs with `model: null`, so the executor fell back to
+`DEFAULT_MAIN_MODEL` unchecked — **every step and every partner review of a
+workflow run**. Now: `blueprintModel()` and `/compile` use
+`resolveModelForUser`, the run stores the resolved model, and
+`executor.ts` clamps again at run time (so a run recovered after a restart, or
+created before the list changed, cannot keep calling a removed model).
+
+**Benign until now only by luck:** `DEFAULT_MAIN_MODEL` is
+`gemini-3-flash-preview`, which happens to be in the live list. Remove it and
+every Week-8/9 workflow would have kept calling it.
+
+**I was wrong about one thing** when I first reported: the per-user
+title/tabular preference IS enforced on write — `routes/user.ts` ~589 returns
+403 via `allowedModelIdsForUser`. It is enforced on read too
+(`userSettings.getUserModelSettings`). No change was needed there.
+
+**Enforced surface, verified by grep — every path that reaches an LLM:**
+assistant + project chat (`runLLMStream`), agent runs from /agents, agent runs
+from workflows, blueprint / pre-flight / edit-with-AI / compile, partner
+review, tabular generate + Tabular Ask, exports AGLC restyle, Deep-verify
+assertion check. The only remaining bare `resolveModel()` calls are in
+`routes/user.ts` for displaying and validating stored preferences; neither
+reaches a model.
+
+Live state: 3 admins exempt, 36 non-admins restricted, 0 stored preferences
+out of policy. Allow-list = claude-haiku-4-5, kimi-k3,
+gemini-3.1-flash-lite-preview, claude-sonnet-4-6, gemini-3-flash-preview.
+
 ## 2026-07-31 — Rose agents/workflows/chat can now CHANGE K&S matters
 Peter: "I want the agents, workflows and libraries in Rose to directly
 interface with and change the tasks, time recording and other aspects of K&S

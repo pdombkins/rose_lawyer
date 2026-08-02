@@ -824,9 +824,14 @@ async function resolveWorkflowSource(
 
 async function blueprintModel(userId: string, db: Db) {
   const { getUserApiKeys } = await import("../lib/userApiKeys");
-  const { resolveModel, DEFAULT_MAIN_MODEL } = await import("../lib/llm");
+  const { DEFAULT_MAIN_MODEL } = await import("../lib/llm");
+  const { resolveModelForUser } = await import("../lib/modelAccess");
   return {
-    model: resolveModel(null, DEFAULT_MAIN_MODEL),
+    // Blueprint, pre-flight, edit-with-AI and compile are not user-selectable
+    // — they always wanted the default model. They still have to respect the
+    // admin allow-list, or a restricted cohort would keep calling a model the
+    // instructor had removed, which is exactly when the setting matters.
+    model: await resolveModelForUser(db, userId, null, DEFAULT_MAIN_MODEL),
     apiKeys: await getUserApiKeys(userId, db),
   };
 }
@@ -1162,9 +1167,10 @@ workflowsRouter.post("/:workflowId/compile", requireAuth, asyncRoute(
     const { getUserApiKeys } = await import("../lib/userApiKeys");
     const { resolveModel, DEFAULT_MAIN_MODEL } = await import("../lib/llm");
     const apiKeys = await getUserApiKeys(userId, db);
+    const { resolveModelForUser } = await import("../lib/modelAccess");
     const plan = await planRun({
       request: instructions,
-      model: resolveModel(null, DEFAULT_MAIN_MODEL),
+      model: await resolveModelForUser(db, userId, null, DEFAULT_MAIN_MODEL),
       apiKeys,
     });
     const { error } = await db
@@ -1282,7 +1288,10 @@ workflowsRouter.post("/:workflowId/run", requireAuth, asyncRoute(
         status: blocked ? "paused" : "awaiting_approval",
         title: resolved.source.title,
         request,
-        model: null,
+        // Was null, which made the executor fall back to DEFAULT_MAIN_MODEL
+        // unchecked — every step and partner review of a workflow run then
+        // bypassed the admin allow-list. Store the resolved model instead.
+        model,
         plan,
         blueprint,
         preflight: {

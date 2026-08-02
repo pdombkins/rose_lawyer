@@ -2,10 +2,12 @@
  * Student model access — admin-configured, site-wide restriction on which
  * LLM models a student can use.
  *
- * "Student" here means: a member of any user_group (see groupAccess.ts) who
- * is not an admin. Instructors/admins are never restricted. Group members
- * with no admin-configured restriction (the default) are unrestricted too —
- * this is opt-in.
+ * "Student" here means: ANY user who is not an admin. It used to mean "a
+ * member of a user_group", which quietly exempted anyone added outside a
+ * group — a real hole, since a new account is created before it is put in a
+ * group, and an account never added to one would have stayed unrestricted
+ * forever. Instructors/admins are never restricted. With no admin-configured
+ * list (the default) nobody is restricted — the feature is opt-in.
  *
  * The restriction is a single flat list of model ids stored in app_settings
  * (key STUDENT_ALLOWED_MODELS_KEY). It applies everywhere a model choice
@@ -17,7 +19,6 @@
 
 import { createServerSupabase } from "./supabase";
 import { getAppSetting, setAppSetting } from "./appSettings";
-import { listUserGroupIds } from "./groupAccess";
 import { resolveModel } from "./llm/models";
 
 type Db = ReturnType<typeof createServerSupabase>;
@@ -56,21 +57,22 @@ async function isAdminUser(db: Db, userId: string): Promise<boolean> {
   return (data as { is_admin?: boolean } | null)?.is_admin === true;
 }
 
-/** Is this user a member of any student group, and not an admin? */
+/**
+ * Everyone who is not an admin is restricted. Deliberately NOT keyed on group
+ * membership: a user added outside a group is still a student, and the point
+ * of the setting is that it binds every non-admin.
+ */
 export async function isRestrictedStudent(
   db: Db,
   userId: string,
 ): Promise<boolean> {
-  if (await isAdminUser(db, userId)) return false;
-  const groupIds = await listUserGroupIds(userId, null, db);
-  return groupIds.length > 0;
+  return !(await isAdminUser(db, userId));
 }
 
 /**
  * The list of model ids this specific user may use, or null if unrestricted
- * (no admin-configured restriction, this user isn't a student-group member,
- * or they're an admin). Used to build the frontend model picker — null
- * means "show everything."
+ * (no admin-configured restriction, or they're an admin). Used to build the
+ * frontend model picker — null means "show everything."
  */
 export async function allowedModelIdsForUser(
   db: Db,
