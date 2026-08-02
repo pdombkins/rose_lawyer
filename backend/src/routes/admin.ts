@@ -37,6 +37,7 @@ import {
 import { MODEL_REGISTRY } from "../lib/llm";
 import { isEmailConfigured, sendEmail, escapeHtml } from "../lib/email";
 import { createAcceptLink } from "../lib/inviteLinks";
+import { loadActivationDates, normalizeEmail } from "../lib/userLookup";
 
 export const adminRouter = Router();
 
@@ -200,19 +201,63 @@ adminRouter.post("/invite", async (req, res) => {
 
 // ── GET /admin/invitations ────────────────────────────────────────────────────
 
+/**
+ * Pending invitations — reconciled against real account activation.
+ *
+ * `invitations.accepted_at` HAS NO WRITER. Nothing in the acceptance path
+ * touches the backend: /accept redeems the token straight against Supabase in
+ * the browser, so the column has been null on all 38 rows since the table was
+ * created. Filtering on it alone therefore listed every invitation ever sent
+ * as pending — including people who had already accepted and signed in, which
+ * is what Peter hit (p.dombkins@unsw.edu.au showing as active AND pending).
+ *
+ * Rather than bolt a callback onto the accept page — which would only fix
+ * invitations sent from now on, and would still miss anyone who signs in by
+ * another route — the truth is derived here from auth activation, the same
+ * signal `POST /groups/:id/invite` already uses. Rows found to be accepted are
+ * stamped with the actual activation time (not `now()`), so the data converges
+ * and the next call is a plain read. Self-healing and retroactive.
+ */
 adminRouter.get("/invitations", async (_req, res) => {
   const db = createServerSupabase();
   const { data, error } = await db
     .from("invitations")
     .select("id, email, accepted_at, created_at")
-    .is("accepted_at", null) // pending only
+    .is("accepted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
     return void res.status(500).json({ detail: error.message });
   }
 
-  res.json({ invitations: data ?? [] });
+  const rows = (data ?? []) as {
+    id: string;
+    email: string;
+    accepted_at: string | null;
+    created_at: string;
+  }[];
+  if (rows.length === 0) return void res.json({ invitations: [] });
+
+  const activatedAt = await loadActivationDates(db);
+  const pending: typeof rows = [];
+  const settled: { id: string; at: string }[] = [];
+
+  for (const row of rows) {
+    const at = activatedAt.get(normalizeEmail(row.email));
+    if (at) settled.push({ id: row.id, at });
+    else pending.push(row);
+  }
+
+  // Best-effort write-back; a failure here must not break the list.
+  for (const s of settled) {
+    await db
+      .from("invitations")
+      .update({ accepted_at: s.at })
+      .eq("id", s.id)
+      .then(undefined, () => {});
+  }
+
+  res.json({ invitations: pending });
 });
 
 // ── DELETE /admin/invitations/:id ─────────────────────────────────────────────

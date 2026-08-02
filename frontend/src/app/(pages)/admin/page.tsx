@@ -19,6 +19,7 @@ import {
     Check,
 } from "lucide-react";
 import { useUserProfile } from "@/app/contexts/UserProfileContext";
+import { useAuth } from "@/app/contexts/AuthContext";
 import { LoadMoreSentinel } from "@/app/components/shared/LoadMoreSentinel";
 import {
     SETTINGS_MODELS,
@@ -72,6 +73,10 @@ function StatusBadge({ confirmed }: { confirmed: boolean }) {
 export default function AdminPage() {
     const router = useRouter();
     const { profile, loading: profileLoading } = useUserProfile();
+    // The signed-in account's own id — the one user nobody may remove. The
+    // profile payload carries no id, so it comes from the auth session.
+    const { user: signedInUser } = useAuth();
+    const signedInUserId = signedInUser?.id ?? null;
 
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [invitations, setInvitations] = useState<AdminInvitation[]>([]);
@@ -813,8 +818,18 @@ export default function AdminPage() {
                                         </p>
                                     </div>
 
-                                    {/* Remove */}
-                                    {!user.isAdmin && (
+                                    {/* Remove.
+                                        Gated on "not me", NOT on "not an
+                                        admin". Hiding it for every admin left
+                                        an admin account impossible to remove
+                                        from the UI at all — which is how
+                                        peter.dombkins@au.pwc.com became stuck:
+                                        provisioned, never activated, and
+                                        undeletable. The backend has always
+                                        refused only self-deletion, so the
+                                        frontend was the stricter of the two
+                                        for no reason. */}
+                                    {user.id !== signedInUserId && (
                                         <>
                                             {confirmRemove?.id === user.id ? (
                                                 <div className="flex items-center gap-2">

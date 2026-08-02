@@ -51,7 +51,20 @@ export async function loadProfileUsersByEmail(db: Db) {
  * ground truth for "this person has actually registered".
  */
 export async function loadActivatedEmails(db: Db): Promise<Set<string>> {
-    const activated = new Set<string>();
+    return new Set((await loadActivationDates(db)).keys());
+}
+
+/**
+ * As `loadActivatedEmails`, but keeps WHEN each account activated.
+ *
+ * Needed because `invitations.accepted_at` has no writer — nothing in the
+ * accept flow calls the backend (the /accept page redeems the token directly
+ * against Supabase), so the column stayed null forever and every invitation
+ * ever sent showed as pending, including for people already signed in.
+ * Reconciling at read time needs a real timestamp to write, not `now()`.
+ */
+export async function loadActivationDates(db: Db): Promise<Map<string, string>> {
+    const activated = new Map<string, string>();
     const perPage = 1000;
     // Page through all auth users (admin-only surface; class-sized instances).
     for (let page = 1; page <= 50; page++) {
@@ -66,7 +79,7 @@ export async function loadActivatedEmails(db: Db): Promise<Set<string>> {
             if (!email) continue;
             const activatedAt =
                 u.confirmed_at ?? u.email_confirmed_at ?? u.last_sign_in_at ?? null;
-            if (activatedAt) activated.add(email);
+            if (activatedAt) activated.set(email, activatedAt);
         }
         if (users.length < perPage) break;
     }

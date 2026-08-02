@@ -496,6 +496,40 @@ value instead of replacing it) and due date 7 Aug → **14 Aug** again.
   model is chosen per conversation in the UI, so the new defaults do not touch
   an existing chat. Switch the ModelToggle; students are unaffected.
 
+### Admin: accepted invitations never cleared, and admins couldn't be removed
+Two separate defects, both reported by Peter on 2 Aug.
+
+**1. `invitations.accepted_at` HAS NO WRITER.** 0 of 38 rows had it set, because
+nothing in the acceptance path touches the backend — `/accept` redeems the
+token straight against Supabase in the browser. `GET /admin/invitations`
+filtered on `accepted_at is null`, so every invitation ever sent showed as
+pending forever, including `p.dombkins@unsw.edu.au`, who was simultaneously
+listed as an active user and as a pending invite.
+- Fixed by deriving the truth at read time from auth activation — the same
+  signal `POST /groups/:id/invite` already uses — rather than adding a callback
+  to the accept page, which would only have fixed invitations sent from then on
+  and would still miss anyone signing in by another route.
+- `loadActivationDates()` (new, in `lib/userLookup.ts`) returns email →
+  activation timestamp; `loadActivatedEmails()` is now derived from it. Rows
+  found accepted are stamped with the ACTUAL activation time, not `now()`, so
+  the data converges and the next call is a plain read. Self-healing and
+  retroactive.
+- Live data backfilled by SQL as well, so it reads correctly without waiting
+  for the deploy: 2 rows stamped, 36 genuinely still pending.
+
+**2. The Remove button was hidden for every admin.** `admin/page.tsx` gated it
+on `!user.isAdmin`, so an admin account could not be removed from the UI at
+all — which is how `peter.dombkins@au.pwc.com` got stuck (provisioned 28 Jul,
+never activated, `is_admin: true`, undeletable). The backend
+`DELETE /admin/users/:userId` has only ever refused SELF-deletion, so the
+frontend was the stricter of the two for no reason. Now gated on
+`user.id !== signedInUserId`, with the id taken from the auth session
+(`useAuth`) because the profile payload carries no id.
+
+**Revoke already existed** — `DELETE /admin/invitations/:id` plus a "Revoke"
+control on each pending row. It is small grey text at the right of the row,
+which is easy to miss.
+
 ### Email is now DENY-BY-DEFAULT per notification kind
 Peter: "turn off all email notifications from rose in relation to tasks (eg.
 late tasks)", then "make run and review completions in-app notifications".
