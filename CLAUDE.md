@@ -384,8 +384,25 @@ Pages → rose-lawyer → Settings → Build). Deploys are now manual only —
 the project we migrated OFF. It only ever failed ("Remote migration versions
 not found in local migrations directory"), but the intent was live.
 
-**Nothing automated now watches the repo.** `origin` is HTTPS, so `git push`
-still needs Peter's GitHub credential; nothing else does.
+**Nothing automated now watches the repo.** Pushing is purely "save to GitHub"
+plus the Railway backend redeploy. Cloudflare only ever deploys from a manual
+`npm run deploy` / `Cutover K&S.command`.
+
+**Git auth is now SSH, not a PAT** (2 Aug). `origin` =
+`git@github.com:pdombkins/rose_lawyer.git`, key `MacBook Pro — mike-OSS`
+(`SHA256:KRb9RfR1XYLMW5fJ9vVKYDcna+nqCZ5xQnT7xCzqnHg`). No expiry to manage.
+
+**⚠️ Outbound port 22 is BLOCKED on Peter's network.** A plain SSH push gives
+`Connection closed by <ip> port 22` — which looks like an auth failure but is
+not (auth failure would be `Permission denied (publickey)`). Fixed with SSH
+over 443 in `~/.ssh/config`:
+```
+Host github.com
+  Hostname ssh.github.com
+  Port 443
+  User git
+```
+If a push ever fails this way again on a new machine, that is the cause.
 
 ## 2026-07-31 — rose.lawyer served the K&S site (assets-only Worker)
 **Symptom:** `rose.lawyer/` returned the Kendry & Slate marketing shell,
