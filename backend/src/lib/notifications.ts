@@ -28,30 +28,28 @@ export type NotifyArgs = {
 };
 
 /**
- * WHICH KINDS MAY EVER BE EMAILED. Everything else is in-app only.
+ * WHICH KINDS MAY EVER BE EMAILED.
  *
- * Deny by default, and decided here rather than at each call site, so a
- * notification kind added later cannot start mailing 36 students because
- * somebody forgot a flag.
+ * **Currently EMPTY: Rose never emails a notification.** Every kind —
+ * `agent_run`, `tabular_review`, `deadline`, `regwatch`, `system` — raises the
+ * in-app bell and stops there. Peter's instruction, 2 Aug 2026, arrived in two
+ * steps (tasks first, then runs and reviews, then the rest).
  *
- * Excluded on Peter's instruction (2 Aug 2026), for one reason — volume in a
- * teaching cohort:
- *   · `deadline`    — the case study ships 49 tasks all deliberately overdue,
- *                     so a daily sweep would chase students about work that is
- *                     meant to be late.
- *   · `agent_run`   — one per completed run. A Week-8 session is several runs
- *                     per student across 36 students.
- *   · `tabular_review` — same, per completed review.
- * All three still raise the in-app bell; only the email is suppressed.
+ * The reason is volume in a teaching cohort of 36: the case study ships 49
+ * deliberately overdue tasks, and a single Week-8 session is several agent runs
+ * and tabular reviews per student. Nothing here is urgent enough to be worth an
+ * inbox.
  *
- * `regwatch` and `system` stay emailable: regwatch is a genuine
- * out-of-band alert about a regulatory change, and `system` carries budget
- * warnings a user would want even when not signed in. Both are low-volume.
+ * Deny-by-default and decided HERE rather than at each call site, so a
+ * notification kind added later cannot start mailing the cohort because
+ * somebody forgot a flag. To re-enable one, add its kind to this set — that is
+ * the whole change.
+ *
+ * NB this governs NOTIFICATIONS ONLY. Invitations and password setup still send
+ * mail, directly through lib/email.ts, and must keep doing so — that is how a
+ * student gets into Rose in the first place.
  */
-const EMAILABLE_KINDS: ReadonlySet<NotificationKind> = new Set([
-    "regwatch",
-    "system",
-]);
+const EMAILABLE_KINDS: ReadonlySet<NotificationKind> = new Set<NotificationKind>();
 
 const FROM_ADDRESS =
     process.env.NOTIFICATIONS_FROM_EMAIL || "Rose <onboarding@resend.dev>";

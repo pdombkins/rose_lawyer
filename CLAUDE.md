@@ -501,15 +501,21 @@ Peter: "turn off all email notifications from rose in relation to tasks (eg.
 late tasks)", then "make run and review completions in-app notifications".
 
 `EMAILABLE_KINDS` in `lib/notifications.ts` is the single decision point —
-`notify()` mails only if the kind is in that set. Currently **`regwatch` and
-`system` only**. `deadline`, `agent_run` and `tabular_review` are in-app
-(bell) only. Centralised deliberately: a kind added later cannot start mailing
-36 students because someone forgot a per-call flag. `skipEmail` still works as
-an extra per-call override and is left set on the deadline sweep.
+`notify()` mails only if the kind is in that set. **The set is now EMPTY: Rose
+never emails a notification.** All five kinds (`agent_run`, `tabular_review`,
+`deadline`, `regwatch`, `system`) raise the in-app bell only. To re-enable one,
+add its kind to the set — that is the whole change. Centralised deliberately:
+a kind added later cannot start mailing 36 students because someone forgot a
+per-call flag. `skipEmail` still works as an extra per-call override and is
+left set on the deadline sweep.
 
 Rationale is volume, not preference: the case study ships 49 deliberately
 overdue tasks (daily chasing mail), and a Week-8 session is several agent runs
 and tabular reviews per student across 36 students.
+
+**Invitations are NOT affected** — `POST /groups/:id/invite` and
+`POST /admin/invite` send through `lib/email.ts` directly, not through
+`notify()`. That path must keep working; it is how a student gets in.
 
 **⚠️ `email_notifications` is now `true` for all 39 users** — CLAUDE.md
 previously recorded it as false for all 39, so a default flipped somewhere.
