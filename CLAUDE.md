@@ -496,19 +496,24 @@ value instead of replacing it) and due date 7 Aug → **14 Aug** again.
   model is chosen per conversation in the UI, so the new defaults do not touch
   an existing chat. Switch the ModelToggle; students are unaffected.
 
-### Task/deadline reminders are now IN-APP ONLY (no email)
+### Email is now DENY-BY-DEFAULT per notification kind
 Peter: "turn off all email notifications from rose in relation to tasks (eg.
-late tasks)". `checkDeadlinesAndNotify()` in `lib/lists.ts` now passes
-`skipEmail: true`, so the daily sweep still raises the in-app bell but never
-mails. Chosen over the two alternatives on purpose: unsetting
-`user_profiles.email_notifications` would be undone the moment anyone opted
-back in, and `LISTS_REMINDERS_DISABLED=1` would kill the in-app reminder too.
+late tasks)", then "make run and review completions in-app notifications".
+
+`EMAILABLE_KINDS` in `lib/notifications.ts` is the single decision point —
+`notify()` mails only if the kind is in that set. Currently **`regwatch` and
+`system` only**. `deadline`, `agent_run` and `tabular_review` are in-app
+(bell) only. Centralised deliberately: a kind added later cannot start mailing
+36 students because someone forgot a per-call flag. `skipEmail` still works as
+an extra per-call override and is left set on the deadline sweep.
+
+Rationale is volume, not preference: the case study ships 49 deliberately
+overdue tasks (daily chasing mail), and a Week-8 session is several agent runs
+and tabular reviews per student across 36 students.
 
 **⚠️ `email_notifications` is now `true` for all 39 users** — CLAUDE.md
-previously recorded it as false for all 39, so something flipped the default.
-That means `agent_run` and `tabular_review` completions WILL email students
-once class starts (one per run, 36 students). Not changed, because Peter asked
-about tasks; revisit before Week 8 if inbox noise matters.
+previously recorded it as false for all 39, so a default flipped somewhere.
+That per-user opt-in is now the *second* gate, not the first.
 
 All 58 existing `deadline` notifications belong to Peter's own account (he
 created the list items) — no student has ever received one.

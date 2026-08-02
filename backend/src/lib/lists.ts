@@ -146,19 +146,11 @@ export async function checkDeadlinesAndNotify(): Promise<void> {
                 title,
                 body: `${raw.kind === "deadline" ? "Deadline" : "Task"} on ${projectName}${raw.due_at ? ` — due ${raw.due_at.slice(0, 10)}` : ""}${overdue ? " (overdue)" : ""}.`,
                 link: `/projects/${raw.project_id}`,
-                // IN-APP ONLY — never email a task or deadline reminder.
-                //
-                // Peter's instruction, 2 Aug 2026. This is a teaching cohort of
-                // 36 working a deliberately overdue case study (NexaCare ships
-                // 49 tasks, all past due), so an emailing reminder sweep would
-                // put chasing mail in students' inboxes daily for work that is
-                // overdue BY DESIGN. The bell in the app still shows them.
-                //
-                // Set here rather than by unsetting user_profiles
-                // .email_notifications, so it holds no matter what an
-                // individual opts into, and rather than via
-                // LISTS_REMINDERS_DISABLED, which would kill the in-app
-                // reminder too.
+                // Belt and braces: `deadline` is already outside
+                // EMAILABLE_KINDS in lib/notifications.ts, so this reminder is
+                // in-app only regardless. Kept explicit because this is the
+                // sweep that would otherwise mail 36 students daily about a
+                // case study whose 49 tasks are overdue by design.
                 skipEmail: true,
             });
         } catch (err) {
