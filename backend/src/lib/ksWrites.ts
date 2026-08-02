@@ -131,6 +131,28 @@ export function ksMatterLink(matterId: string): string {
     return `/workspace/dashboard/matter/${matterId}`;
 }
 
+/**
+ * Render a date as "Friday, 14 August 2026" for a confirmation.
+ *
+ * The weekday is the point. A model asked for "next Friday" wrote 14 August
+ * when 7 August was meant, and "2026-08-14" in a confirmation gives the reader
+ * nothing to check it against. Naming the weekday makes an off-by-a-week
+ * obvious at a glance, which is the only defence available here — the server
+ * cannot know which Friday the user had in mind.
+ */
+function formatDueDate(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const d = new Date(`${iso.slice(0, 10)}T00:00:00+10:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat("en-AU", {
+        timeZone: "Australia/Sydney",
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    }).format(d);
+}
+
 /** Confirm a task belongs to the matter the caller named. */
 async function assertTaskInMatter(taskId: string, matterId: string) {
     const { data } = await KS()
@@ -162,6 +184,44 @@ async function resolveFeeEarner(name: string): Promise<{ id: string; full_name: 
 
 const TASK_STATUSES = new Set(["not_started", "in_progress", "completed", "blocked", "on_hold"]);
 
+/** Lowercase, strip punctuation, collapse whitespace. */
+function normaliseTitle(s: string): string {
+    return s
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+/** Levenshtein distance, iterative with a single row. Titles are short. */
+function editDistance(a: string, b: string): number {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+        const row = [i];
+        for (let j = 1; j <= b.length; j++) {
+            row[j] = Math.min(
+                prev[j] + 1,
+                row[j - 1] + 1,
+                prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+            );
+        }
+        prev = row;
+    }
+    return prev[b.length];
+}
+
+/** 1 = identical, 0 = nothing in common. */
+function titleSimilarity(a: string, b: string): number {
+    const x = normaliseTitle(a);
+    const y = normaliseTitle(b);
+    if (!x || !y) return 0;
+    const longest = Math.max(x.length, y.length);
+    return (longest - editDistance(x, y)) / longest;
+}
+
 /**
  * Refuse a create that would duplicate a task already on the matter.
  *
@@ -175,12 +235,24 @@ const TASK_STATUSES = new Set(["not_started", "in_progress", "completed", "block
  * The tool description already asked the model to check first. It didn't.
  * Instructions are advisory; this is not. The error deliberately carries the
  * existing task's id so the model's next move is obvious and correct: update
- * that task. `allow_duplicate` remains for the genuine case where a matter
- * really does need two tasks of the same name.
+ * that task.
+ *
+ * WHY IT IS FUZZY AND NOT AN EXACT TITLE MATCH.
+ * The first version compared titles exactly. It was defeated immediately: asked
+ * again for "Doument review", the model silently corrected the typo to
+ * "Document review", which no longer matched, and a duplicate was created
+ * anyway. A model that tidies its input is normal behaviour, so the comparison
+ * has to tolerate it — titles are normalised (case, punctuation, spacing) and
+ * compared by edit distance. 0.85 catches typo fixes, pluralisation and
+ * punctuation changes while leaving genuinely different tasks ("Document
+ * review" vs "Document collection", 0.62) alone.
  *
  * Scoped to the matter, so two groups may each have their own "Document
- * review" — only a repeat within one matter is refused.
+ * review" — only a repeat within one matter is refused. `allow_duplicate`
+ * remains for the genuine case.
  */
+const DUPLICATE_TITLE_THRESHOLD = 0.85;
+
 async function assertNoDuplicateTask(
     matterId: string,
     title: string,
@@ -191,20 +263,33 @@ async function assertNoDuplicateTask(
     const { data } = await KS()
         .from("tasks")
         .select("id, title, status, due_date")
-        .eq("matter_id", matterId)
-        .ilike("title", title.trim())
-        .limit(1);
+        .eq("matter_id", matterId);
 
-    const existing = (data ?? [])[0] as
-        | { id: string; title: string; status: string; due_date: string | null }
-        | undefined;
-    if (!existing) return;
+    const rows = (data ?? []) as {
+        id: string;
+        title: string;
+        status: string;
+        due_date: string | null;
+    }[];
+
+    let best: (typeof rows)[number] | undefined;
+    let bestScore = 0;
+    for (const row of rows) {
+        const score = titleSimilarity(title, row.title);
+        if (score > bestScore) {
+            bestScore = score;
+            best = row;
+        }
+    }
+    if (!best || bestScore < DUPLICATE_TITLE_THRESHOLD) return;
 
     throw new Error(
-        `A task called "${existing.title}" already exists on this matter (id ${existing.id}, ` +
-            `status ${existing.status}, due ${existing.due_date ?? "not set"}). ` +
-            `To change it — including setting or moving a due date — use ks_update_task with that id. ` +
-            `Only pass allow_duplicate: true if the matter genuinely needs a second, separate task with the same name.`,
+        `A task called "${best.title}" already exists on this matter (id ${best.id}, ` +
+            `status ${best.status}, due ${best.due_date?.slice(0, 10) ?? "not set"}). ` +
+            `Do NOT create another one. To change it — including setting or moving a due date, ` +
+            `reassigning it, or correcting its title — call ks_update_task with task_id ${best.id}. ` +
+            `Only pass allow_duplicate: true if the matter genuinely needs a second, separate task ` +
+            `alongside that one; never use it merely to get past this message.`,
     );
 }
 
@@ -272,7 +357,9 @@ export async function ksCreateTask(
         // the task a second time.
         confirmation: `Created task "${data.title}" (id ${data.id})${
             assignee ? ` assigned to ${assignee.full_name}` : ""
-        }${args.due_date ? `, due ${args.due_date}` : ""}. To change this task later, use ks_update_task with id ${data.id}.`,
+        }${
+            args.due_date ? `, due ${formatDueDate(args.due_date)}` : ", with no due date"
+        }. State the due date exactly as written here, weekday included. To change this task later, use ks_update_task with id ${data.id}.`,
     };
 }
 
@@ -331,7 +418,9 @@ export async function ksUpdateTask(
         link: ksMatterLink((data as { matter_id: string }).matter_id),
         confirmation: `Updated task "${data.title}" (id ${data.id}): changed ${Object.keys(patch)
             .filter((k) => k !== "performed_by")
-            .join(", ")}. No new task was created.`,
+            .join(", ")}.${
+            args.due_date ? ` Due date is now ${formatDueDate(args.due_date)}.` : ""
+        } No new task was created.`,
     };
 }
 

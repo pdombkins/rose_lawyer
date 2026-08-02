@@ -517,6 +517,8 @@ export const KS_TOOLS = [
 export const KS_SYSTEM_PROMPT = `KENDRY & SLATE (practice management):
 The ks_* tools read and change real matter data — tasks, assignments, time, calendar, documents.
 
+WRITE ONLY WHAT WAS ASKED FOR IN THE CURRENT REQUEST. Do not carry a value over from an earlier turn unless the user has referred back to it. If this request names no due date, create the task with no due date rather than reusing one you set before. Earlier turns are history, not standing instructions — and a date you stated earlier is not evidence that the date was right.
+
 AMEND, DO NOT RE-CREATE. If the user asks you to change something that already exists — including a record you created earlier in this same conversation ("set the due date for this task", "move that deadline", "reassign it") — use the matching ks_update_* tool with that record's id. Never create a second record to apply a change to an existing one. If you do not have the id, find it with ks_list_tasks (or ks_time_ledger, or the matter's events) before writing anything. Creating a duplicate is a failure even when the tool call succeeds.
 
 AFTER ANY ks_* WRITE, your final answer MUST:

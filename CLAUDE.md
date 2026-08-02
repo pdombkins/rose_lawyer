@@ -453,6 +453,37 @@ not a control.**
 - Cleanup: duplicate `acd63bd1` deleted (verified first: 0 assignments, 0 time
   entries, 0 documents).
 
+### Round 2 — the exact-title guard was defeated in one attempt
+Re-run of the same request. The model silently corrected the typo
+"Doument" → "Document", so `ilike` no longer matched and a third task was
+created. A model tidying its own input is normal, so the comparison now
+normalises (case, punctuation, spacing) and compares by **Levenshtein
+similarity ≥ 0.85** over every task on the matter. Verified against a table of
+cases: typo fix 0.933, plural 0.938, case+punctuation 1.000 all BLOCK;
+"Document review" vs "Document Review and Organization" 0.469, vs "Document
+collection" 0.579, "Draft SPA" vs "Draft share purchase agreement" 0.300 all
+allow. Helpers `normaliseTitle`/`editDistance`/`titleSimilarity` in `ksWrites.ts`.
+
+Also in that run: the request named **no due date**, yet the model set one —
+carried over from its own earlier turn. New first paragraph of
+`KS_SYSTEM_PROMPT`: WRITE ONLY WHAT WAS ASKED FOR IN THE CURRENT REQUEST;
+"earlier turns are history, not standing instructions — and a date you stated
+earlier is not evidence that the date was right."
+
+`formatDueDate()` now renders confirmations as "Friday, 14 August 2026". The
+server cannot know which Friday was meant, so naming the weekday is the only
+defence: an off-by-a-week is obvious at a glance instead of arriving as an
+unreadable `2026-08-14`.
+
+### ⚠️ GEMINI FREE TIER WILL NOT SURVIVE A CLASS
+The same run failed twice with `429 … generate_content_free_tier_requests,
+limit: 20`. The Gemini key is on the **free tier**. `DEFAULT_MAIN_MODEL` is
+`gemini-3-flash-preview` and three of the five allow-listed models are Gemini,
+so 36 students will exhaust the quota within minutes and every workflow step,
+partner review and blueprint call will 429. **Before teaching: either put
+billing on the Google AI Studio key, or set `student_allowed_models` to the
+Anthropic models and change `DEFAULT_MAIN_MODEL` off Gemini.**
+
 ### "next Friday" resolved a week late — and agents had NO date at all
 Asked on Sunday 2 Aug, the model set the due date to Friday **14** Aug.
 Australian usage: a bare weekday means the next one to occur, i.e. 7 Aug.
