@@ -265,8 +265,16 @@ export const KS_TOOLS = [
           workstream: { type: "string", description: "New workstream." },
           phase: { type: "string", description: "New phase." },
           commencement_date: { type: "string", description: "New start date, ISO (YYYY-MM-DD)." },
-          due_date: { type: "string", description: "New due date, ISO (YYYY-MM-DD)." },
-          estimated_total_hours: { type: "number", description: "New estimated hours." },
+          estimated_total_hours: {
+            type: "number",
+            description:
+              "New estimated hours. This REPLACES the existing estimate — it is not added to it. If the user asks for a task of 10 hours and the task already carries 10, the correct value is 10, not 20. Omit this field entirely unless the current request asks for the estimate to change.",
+          },
+          due_date: {
+            type: "string",
+            description:
+              "New due date, ISO (YYYY-MM-DD). Omit unless the current request asks for the due date to change — do not restate a date from an earlier turn, and never overwrite an existing due date that the user has not mentioned.",
+          },
           assigned_to_name: {
             type: "string",
             description: "Reassign the task to this fee earner. Must match exactly one person.",

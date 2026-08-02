@@ -109,20 +109,40 @@ export const SYSTEM_PROMPT = buildSystemPrompt(true);
  * buildMessages.
  */
 export function todaySection(now: Date = new Date()): string {
-  const today = new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Sydney",
+  const fmt = (d: Date, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", ...opts }).format(d);
+  const iso = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" }).format(d);
+
+  const today = fmt(now, {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(now);
-  const todayIso = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Australia/Sydney",
-  }).format(now);
+  });
+
+  // The next occurrence of each weekday, PRE-CALCULATED.
+  //
+  // Telling the model the rule was not enough: given "next Friday" on Sunday
+  // 2 Aug it wrote 14 Aug both before and after the rule was added, because it
+  // still had to do the arithmetic and it got it wrong. Handing it a lookup
+  // table removes the arithmetic altogether — "next Friday" becomes a table
+  // read, which is the one thing a weak model does reliably. Same reasoning as
+  // the duplicate-task guard: replace an instruction it can fumble with
+  // something it cannot.
+  const lines: string[] = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(now.getTime() + i * 86_400_000);
+    lines.push(`  ${fmt(d, { weekday: "long" })} = ${iso(d)}`);
+  }
 
   return `---
-TODAY: ${today} (${todayIso}), Australia/Sydney.
-Resolve relative dates ("next Friday", "in two weeks", "end of month") from this date. Never infer the date from data you have read — matter and task dates are part of a scenario and are not today.
-A weekday on its own ("Friday", "next Friday", "on Tuesday") means the NEXT occurrence of that weekday after today, even when it falls this week. Only read it as the following week if the user says so explicitly ("the Friday after next", "Friday week").
-Whenever you act on a relative date, state the date you resolved it to in full (e.g. "Friday, 7 August 2026") so the user can correct you.`;
+TODAY: ${today} (${iso(now)}), Australia/Sydney.
+Never infer the date from data you have read — matter and task dates are part of a scenario and are not today.
+
+THE NEXT OCCURRENCE OF EACH WEEKDAY, ALREADY CALCULATED. Use these dates exactly as written; do not compute your own:
+${lines.join("\n")}
+
+A weekday on its own ("Friday", "next Friday", "on Tuesday", "by Wednesday") means the date shown in that table, even when it falls this week. Use a later date ONLY if the user says so explicitly ("the Friday after next", "Friday week", "Friday the 14th").
+Whenever you act on a relative date, state the date you resolved it to in full (e.g. "Friday, ${fmt(new Date(now.getTime() + ((5 - now.getDay() + 7) % 7 || 7) * 86_400_000), { day: "numeric", month: "long", year: "numeric" })}") so the user can correct you.`;
 }

@@ -475,6 +475,27 @@ server cannot know which Friday was meant, so naming the weekday is the only
 defence: an off-by-a-week is obvious at a glance instead of arriving as an
 unreadable `2026-08-14`.
 
+### Round 3 — guard held; the model still merged its own history
+The duplicate guard WORKED: the create was refused and the model called
+`ks_update_task` with the right id. But in the same turn it overwrote two fields
+the request had not mentioned — estimate 10 → **20** (it added to the existing
+value instead of replacing it) and due date 7 Aug → **14 Aug** again.
+
+- **Date is now a lookup, not arithmetic.** Two prompt attempts failed, so
+  `todaySection()` emits the next occurrence of every weekday pre-calculated
+  (`Friday = 2026-08-07`, …) and tells the model to read the table rather than
+  compute. Verified it rolls correctly when today IS a Friday (then Friday =
+  the following week). Same principle as the duplicate guard: replace an
+  instruction the model can fumble with something it cannot.
+- **`estimated_total_hours` now says REPLACES, not adds**, with the 10-vs-20
+  case spelled out; `due_date` on update says never overwrite a date the user
+  has not mentioned. (A stray duplicate `due_date` key crept into the
+  updateTask schema while doing this — removed; params verified unique.)
+- **⚠️ Peter's chat was still on `gemini-3-flash-preview`** at 11:55, after the
+  allow-list change. Admins are exempt from `student_allowed_models` and the
+  model is chosen per conversation in the UI, so the new defaults do not touch
+  an existing chat. Switch the ModelToggle; students are unaffected.
+
 ### Gemini quota — free tier + preview models (both fixed, one needs Peter)
 The same run failed twice with `429 … generate_content_free_tier_requests,
 limit: 20`. Two separate causes, and the second is the one that would have bitten
