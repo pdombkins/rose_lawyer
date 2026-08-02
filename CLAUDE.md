@@ -475,14 +475,30 @@ server cannot know which Friday was meant, so naming the weekday is the only
 defence: an off-by-a-week is obvious at a glance instead of arriving as an
 unreadable `2026-08-14`.
 
-### ⚠️ GEMINI FREE TIER WILL NOT SURVIVE A CLASS
+### Gemini quota — free tier + preview models (both fixed, one needs Peter)
 The same run failed twice with `429 … generate_content_free_tier_requests,
-limit: 20`. The Gemini key is on the **free tier**. `DEFAULT_MAIN_MODEL` is
-`gemini-3-flash-preview` and three of the five allow-listed models are Gemini,
-so 36 students will exhaust the quota within minutes and every workflow step,
-partner review and blueprint call will 429. **Before teaching: either put
-billing on the Google AI Studio key, or set `student_allowed_models` to the
-Anthropic models and change `DEFAULT_MAIN_MODEL` off Gemini.**
+limit: 20`. Two separate causes, and the second is the one that would have bitten
+even after paying.
+
+1. **The key is on the API free tier.** Peter's **Google AI Ultra subscription
+   does NOT fix this** — Pro/Ultra raise limits in the AI Studio playground and
+   Build mode, not for an API key called from a backend. API quota is set by
+   whether billing is enabled on the key's Cloud project. **Peter's action:**
+   enable billing → Tier 1. NB enabling billing removes the free allowance for
+   that project entirely; every call bills from the first token.
+2. **Preview models stay capped at ~250 requests/DAY even on Tier 1.** All three
+   defaults were preview ids. One workflow run is 10+ calls (blueprint,
+   pre-flight, each step, each partner review), so 36 students would have burned
+   a day's quota in minutes no matter what Peter paid.
+
+**Changed (decision: keep Gemini, enable billing):** `DEFAULT_MAIN_MODEL`,
+`DEFAULT_TITLE_MODEL` and `DEFAULT_TABULAR_MODEL` all → **`gemini-3.5-flash`**
+(non-preview), with the reasoning written into `models.ts` above the Gemini
+block so it does not get quietly reverted. `student_allowed_models` →
+`claude-haiku-4-5, kimi-k3, claude-sonnet-4-6, gemini-3.5-flash` — both preview
+ids dropped. All 39 `user_profiles.tabular_model` rows were storing
+`gemini-3-flash-preview`; updated to `gemini-3.5-flash`. Preview ids remain in
+`MODEL_REGISTRY` for one-off admin use.
 
 ### "next Friday" resolved a week late — and agents had NO date at all
 Asked on Sunday 2 Aug, the model set the due date to Friday **14** Aug.

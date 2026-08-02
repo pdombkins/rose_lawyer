@@ -41,7 +41,16 @@ export const MODEL_REGISTRY: ModelDef[] = [
     { id: "claude-sonnet-4-6", provider: "claude", tier: "main", label: "Claude Sonnet 4.6", inputPerM: 3.0, outputPerM: 15.0 },
     { id: "claude-haiku-4-5",  provider: "claude", tier: "low",  label: "Claude Haiku 4.5", inputPerM: 1.0,  outputPerM: 5.0 },
 
-    // Gemini (Standard paid tier)
+    // Gemini (Standard paid tier).
+    //
+    // ⚠️ THE `-preview` IDS ARE NOT SAFE AS DEFAULTS FOR A COHORT.
+    // Google caps preview models at ~250 requests/DAY even on the paid Tier 1,
+    // and that cap is not lifted by an AI Pro/Ultra subscription — Ultra raises
+    // limits in the AI Studio playground and Build mode, not for an API key
+    // called from a backend like this one. A single workflow run is 10+ calls
+    // (blueprint, pre-flight, each step, each partner review), so 36 students
+    // would exhaust a day's quota in minutes. Keep the defaults below on
+    // non-preview ids; previews remain selectable for one-off admin use.
     { id: "gemini-3.5-flash",              provider: "gemini", tier: "main", label: "Gemini 3.5 Flash",      inputPerM: 1.5,  outputPerM: 9.0 },
     { id: "gemini-3.1-pro-preview",        provider: "gemini", tier: "main", label: "Gemini 3.1 Pro",        inputPerM: 2.0,  outputPerM: 12.0 },
     { id: "gemini-3-flash-preview",        provider: "gemini", tier: "main", label: "Gemini 3 Flash",        inputPerM: 0.5,  outputPerM: 3.0 },
@@ -95,9 +104,13 @@ export const CLAUDE_LOW_MODELS = idsFor("claude", "low");
 export const GEMINI_LOW_MODELS = idsFor("gemini", "low");
 export const OPENAI_LOW_MODELS = idsFor("openai", "low");
 
-export const DEFAULT_MAIN_MODEL = "gemini-3-flash-preview";
-export const DEFAULT_TITLE_MODEL = "gemini-3.1-flash-lite-preview";
-export const DEFAULT_TABULAR_MODEL = "gemini-3-flash-preview";
+// Non-preview ids only — see the warning on the Gemini block above. These are
+// what every unattended path falls back to (agent steps, partner review,
+// blueprint, pre-flight, tabular, exports), so a preview id here caps the whole
+// cohort at ~250 requests a day regardless of billing.
+export const DEFAULT_MAIN_MODEL = "gemini-3.5-flash";
+export const DEFAULT_TITLE_MODEL = "gemini-3.5-flash";
+export const DEFAULT_TABULAR_MODEL = "gemini-3.5-flash";
 
 const ALL_MODELS = new Set<string>(MODEL_REGISTRY.map((m) => m.id));
 
