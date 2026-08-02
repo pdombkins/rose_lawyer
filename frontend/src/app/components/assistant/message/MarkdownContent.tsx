@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import Link from "next/link";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
@@ -236,6 +237,25 @@ export function MarkdownContent({
                                     <span className="text-blue-600 underline">
                                         {children}
                                     </span>
+                                );
+                            }
+                            // A link to a Rose route ("/workspace/dashboard/
+                            // matter/…", "/library", "/verify?report=…") must
+                            // navigate INSIDE the app. Sending it to a new tab
+                            // costs a full page load and drops the user out of
+                            // the shell they were working in — which for the
+                            // K&S matter links the assistant now returns after
+                            // every write is precisely the thing /workspace
+                            // exists to prevent.
+                            if (href.startsWith("/")) {
+                                return (
+                                    <Link
+                                        href={href}
+                                        className="text-blue-600 hover:text-blue-700 underline"
+                                        {...anchorProps}
+                                    >
+                                        {children}
+                                    </Link>
                                 );
                             }
                             return (

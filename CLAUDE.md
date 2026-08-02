@@ -496,6 +496,20 @@ value instead of replacing it) and due date 7 Aug → **14 Aug** again.
   model is chosen per conversation in the UI, so the new defaults do not touch
   an existing chat. Switch the ModelToggle; students are unaffected.
 
+### "Why does the hyperlink truncate?" — it doesn't; but internal links opened a new tab
+Checked `chat_messages` directly: every stored assistant message ends with the
+complete `[Open the matter in Kendry & Slate](/workspace/dashboard/matter/…)`,
+closing bracket included, and `MarkdownContent.tsx` puts no clamp or overflow on
+anchors. The truncation was in the copy out of the browser, not in Rose.
+
+Adjacent real defect found while checking: **every** markdown link rendered with
+`target="_blank"`, so a Rose-internal href (`/workspace/...`, `/library`,
+`/verify?report=…`) opened a new tab and reloaded the whole app — dropping the
+user out of the shell, which is exactly what `/workspace` exists to prevent.
+`MarkdownContent.tsx` now renders `href.startsWith("/")` through `next/link`
+(same tab, client-side); external links keep `_blank` + `noopener`.
+**Frontend change — needs `npm run deploy`, not just a push.**
+
 ### Gemini quota — free tier + preview models (both fixed, one needs Peter)
 The same run failed twice with `429 … generate_content_free_tier_requests,
 limit: 20`. Two separate causes, and the second is the one that would have bitten
