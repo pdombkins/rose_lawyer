@@ -496,6 +496,23 @@ value instead of replacing it) and due date 7 Aug → **14 Aug** again.
   model is chosen per conversation in the UI, so the new defaults do not touch
   an existing chat. Switch the ModelToggle; students are unaffected.
 
+### Task/deadline reminders are now IN-APP ONLY (no email)
+Peter: "turn off all email notifications from rose in relation to tasks (eg.
+late tasks)". `checkDeadlinesAndNotify()` in `lib/lists.ts` now passes
+`skipEmail: true`, so the daily sweep still raises the in-app bell but never
+mails. Chosen over the two alternatives on purpose: unsetting
+`user_profiles.email_notifications` would be undone the moment anyone opted
+back in, and `LISTS_REMINDERS_DISABLED=1` would kill the in-app reminder too.
+
+**⚠️ `email_notifications` is now `true` for all 39 users** — CLAUDE.md
+previously recorded it as false for all 39, so something flipped the default.
+That means `agent_run` and `tabular_review` completions WILL email students
+once class starts (one per run, 36 students). Not changed, because Peter asked
+about tasks; revisit before Week 8 if inbox noise matters.
+
+All 58 existing `deadline` notifications belong to Peter's own account (he
+created the list items) — no student has ever received one.
+
 ### "Why does the hyperlink truncate?" — it doesn't; but internal links opened a new tab
 Checked `chat_messages` directly: every stored assistant message ends with the
 complete `[Open the matter in Kendry & Slate](/workspace/dashboard/matter/…)`,
