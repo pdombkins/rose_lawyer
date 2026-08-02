@@ -117,6 +117,20 @@ export async function assertRowWritable(
     return { matterId };
 }
 
+
+/**
+ * Deep link to the K&S page for a matter, inside Rose's shell.
+ *
+ * Returned with every write so the model has a real URL to put in its
+ * confirmation instead of inventing one or leaving the user to guess whether
+ * anything happened. /workspace is the Rose page that frames the K&S app
+ * (see frontend (pages)/workspace); /firm is the raw SPA and would drop the
+ * user out of the sidebar.
+ */
+export function ksMatterLink(matterId: string): string {
+    return `/workspace/dashboard/matter/${matterId}`;
+}
+
 /** Confirm a task belongs to the matter the caller named. */
 async function assertTaskInMatter(taskId: string, matterId: string) {
     const { data } = await KS()
@@ -200,7 +214,14 @@ export async function ksCreateTask(
         .select("id, title, status, due_date")
         .single();
     if (error) throw new Error(error.message);
-    return data;
+    return {
+        ...data,
+        assigned_to: assignee?.full_name ?? null,
+        link: ksMatterLink(args.matter_id),
+        confirmation: `Created task "${data.title}"${
+            assignee ? ` assigned to ${assignee.full_name}` : ""
+        }${args.due_date ? `, due ${args.due_date}` : ""}.`,
+    };
 }
 
 export async function ksUpdateTask(
@@ -250,17 +271,25 @@ export async function ksUpdateTask(
         .from("tasks")
         .update(patch)
         .eq("id", args.task_id)
-        .select("id, title, status, due_date, estimated_total_hours")
+        .select("id, title, status, due_date, estimated_total_hours, matter_id")
         .single();
     if (error) throw new Error(error.message);
-    return data;
+    return {
+        ...data,
+        link: ksMatterLink((data as { matter_id: string }).matter_id),
+        confirmation: `Updated task "${data.title}".`,
+    };
 }
 
 export async function ksDeleteTask(userId: string, args: { task_id: string }) {
-    await assertRowWritable(userId, "tasks", args.task_id);
+    const { matterId } = await assertRowWritable(userId, "tasks", args.task_id);
     const { error } = await KS().from("tasks").delete().eq("id", args.task_id);
     if (error) throw new Error(error.message);
-    return { deleted: args.task_id };
+    return {
+        deleted: args.task_id,
+        link: ksMatterLink(matterId),
+        confirmation: "Task deleted.",
+    };
 }
 
 // ── assignments ──────────────────────────────────────────────────────────
@@ -276,7 +305,6 @@ export async function ksAssignTask(
 ) {
     // Assigning is a change to the task, so the task's own guard applies.
     const { matterId } = await assertRowWritable(userId, "tasks", args.task_id);
-    void matterId;
     const person = await resolveFeeEarner(args.fee_earner_name);
 
     const { data: existing } = await KS()
@@ -297,7 +325,13 @@ export async function ksAssignTask(
             .select("id, user_id, estimated_hours, actual_hours")
             .single();
         if (error) throw new Error(error.message);
-        return { ...data, fee_earner: person.full_name, updated: true };
+        return {
+            ...data,
+            fee_earner: person.full_name,
+            updated: true,
+            link: ksMatterLink(matterId),
+            confirmation: `Updated ${person.full_name}'s assignment on this task.`,
+        };
     }
 
     const { data, error } = await KS()
@@ -312,14 +346,20 @@ export async function ksAssignTask(
         .select("id, user_id, estimated_hours, actual_hours")
         .single();
     if (error) throw new Error(error.message);
-    return { ...data, fee_earner: person.full_name, updated: false };
+    return {
+        ...data,
+        fee_earner: person.full_name,
+        updated: false,
+        link: ksMatterLink(matterId),
+        confirmation: `Assigned ${person.full_name} to this task.`,
+    };
 }
 
 export async function ksUnassignTask(
     userId: string,
     args: { task_id: string; fee_earner_name: string },
 ) {
-    await assertRowWritable(userId, "tasks", args.task_id);
+    const { matterId } = await assertRowWritable(userId, "tasks", args.task_id);
     const person = await resolveFeeEarner(args.fee_earner_name);
     const { error } = await KS()
         .from("task_assignments")
@@ -327,7 +367,11 @@ export async function ksUnassignTask(
         .eq("task_id", args.task_id)
         .eq("user_id", person.id);
     if (error) throw new Error(error.message);
-    return { unassigned: person.full_name };
+    return {
+        unassigned: person.full_name,
+        link: ksMatterLink(matterId),
+        confirmation: `Removed ${person.full_name} from this task.`,
+    };
 }
 
 // ── time ─────────────────────────────────────────────────────────────────
@@ -357,17 +401,25 @@ export async function ksUpdateTimeEntry(
         .from("time_entries")
         .update(patch)
         .eq("id", args.time_entry_id)
-        .select("id, hours, date, description, billable")
+        .select("id, hours, date, description, billable, matter_id")
         .single();
     if (error) throw new Error(error.message);
-    return data;
+    return {
+        ...data,
+        link: ksMatterLink((data as { matter_id: string }).matter_id),
+        confirmation: `Updated the time entry (${data.hours}h on ${data.date}).`,
+    };
 }
 
 export async function ksDeleteTimeEntry(userId: string, args: { time_entry_id: string }) {
-    await assertRowWritable(userId, "time_entries", args.time_entry_id);
+    const { matterId } = await assertRowWritable(userId, "time_entries", args.time_entry_id);
     const { error } = await KS().from("time_entries").delete().eq("id", args.time_entry_id);
     if (error) throw new Error(error.message);
-    return { deleted: args.time_entry_id };
+    return {
+        deleted: args.time_entry_id,
+        link: ksMatterLink(matterId),
+        confirmation: "Time entry deleted.",
+    };
 }
 
 // ── calendar ─────────────────────────────────────────────────────────────
@@ -408,7 +460,11 @@ export async function ksCreateEvent(
         .select("id, title, start_time, end_time")
         .single();
     if (error) throw new Error(error.message);
-    return data;
+    return {
+        ...data,
+        link: ksMatterLink(args.matter_id),
+        confirmation: `Added "${data.title}" to the matter calendar.`,
+    };
 }
 
 export async function ksUpdateEvent(
@@ -434,17 +490,25 @@ export async function ksUpdateEvent(
         .from("calendar_events")
         .update(patch)
         .eq("id", args.event_id)
-        .select("id, title, start_time, end_time")
+        .select("id, title, start_time, end_time, matter_id")
         .single();
     if (error) throw new Error(error.message);
-    return data;
+    return {
+        ...data,
+        link: ksMatterLink((data as { matter_id: string }).matter_id),
+        confirmation: `Updated calendar event "${data.title}".`,
+    };
 }
 
 export async function ksDeleteEvent(userId: string, args: { event_id: string }) {
-    await assertRowWritable(userId, "calendar_events", args.event_id);
+    const { matterId } = await assertRowWritable(userId, "calendar_events", args.event_id);
     const { error } = await KS().from("calendar_events").delete().eq("id", args.event_id);
     if (error) throw new Error(error.message);
-    return { deleted: args.event_id };
+    return {
+        deleted: args.event_id,
+        link: ksMatterLink(matterId),
+        confirmation: "Calendar event deleted.",
+    };
 }
 
 // ── matter ───────────────────────────────────────────────────────────────
@@ -493,7 +557,11 @@ export async function ksUpdateMatter(
         .select("id, title, status, fee_type, start_date, end_date")
         .single();
     if (error) throw new Error(error.message);
-    return data;
+    return {
+        ...data,
+        link: ksMatterLink(args.matter_id),
+        confirmation: `Updated matter "${data.title}".`,
+    };
 }
 
 // ── documents ────────────────────────────────────────────────────────────
@@ -529,12 +597,20 @@ export async function ksAddMatterDocument(
         .select("id, title, created_at")
         .single();
     if (error) throw new Error(error.message);
-    return data;
+    return {
+        ...data,
+        link: ksMatterLink(args.matter_id),
+        confirmation: `Added "${data.title}" to the matter documents.`,
+    };
 }
 
 export async function ksDeleteMatterDocument(userId: string, args: { document_id: string }) {
-    await assertRowWritable(userId, "documents", args.document_id);
+    const { matterId } = await assertRowWritable(userId, "documents", args.document_id);
     const { error } = await KS().from("documents").delete().eq("id", args.document_id);
     if (error) throw new Error(error.message);
-    return { deleted: args.document_id };
+    return {
+        deleted: args.document_id,
+        link: ksMatterLink(matterId),
+        confirmation: "Matter document deleted.",
+    };
 }

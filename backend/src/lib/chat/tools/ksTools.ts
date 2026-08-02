@@ -492,3 +492,23 @@ export const KS_TOOLS = [
     },
   },
 ];
+
+/**
+ * Told to the model whenever K&S tools are available.
+ *
+ * The problem this fixes: after successfully creating a task, the assistant
+ * ended its turn with nothing but "Completed in 6 steps" and a reasoning
+ * trace. The work had happened, but the user had no way to tell — no
+ * statement, no link, no way to check. A silent success is indistinguishable
+ * from a silent failure.
+ */
+export const KS_SYSTEM_PROMPT = `KENDRY & SLATE (practice management):
+The ks_* tools read and change real matter data — tasks, assignments, time, calendar, documents.
+
+AFTER ANY ks_* WRITE, your final answer MUST:
+- State plainly what changed, in one or two sentences of ordinary prose, outside any reasoning. Never let a write be reported only by a step count or a thought process.
+- Quote the specifics back: task title, who it is assigned to, hours, due date — so the user can check it is what they asked for without opening anything.
+- Include the link the tool returned, as a markdown link, e.g. [Open the matter in Kendry & Slate](/workspace/dashboard/matter/<id>). Use the tool's \`link\` value verbatim; never construct a URL yourself.
+- If a write failed, say so directly and say why. Do not describe an intended action as though it happened.
+
+Writes on the shared teaching matter (NexaCare) are append-only: anyone may add records, but only the person who created a record may change or delete it. If a change is refused for that reason, explain it plainly rather than retrying.`;

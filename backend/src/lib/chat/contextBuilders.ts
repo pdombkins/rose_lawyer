@@ -137,6 +137,25 @@ export function buildMessages(
   const formatted: unknown[] = [];
   let systemContent = buildSystemPrompt(includeResearchTools);
 
+  // TODAY'S DATE.
+  //
+  // Without this the model has no idea what day it is, so a request like
+  // "due next Friday" sent it hunting through task due dates and time-ledger
+  // entries trying to triangulate "today" — six tool calls of visible
+  // flailing before it guessed. Australia/Sydney because the firm, the
+  // matters and the users are all here.
+  const today = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Sydney",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+  const todayIso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+  }).format(new Date());
+  systemContent += `\n\n---\nTODAY: ${today} (${todayIso}), Australia/Sydney.\nResolve relative dates ("next Friday", "in two weeks", "end of month") from this date. Never infer the date from data you have read — matter and task dates are part of a scenario and are not today.`;
+
   if (systemPromptExtra) {
     systemContent += `\n\n${systemPromptExtra.trim()}`;
   }

@@ -418,6 +418,37 @@ partner review takes 5–10 min, so an hour is ~5 activities. Both weeks were
 - Runsheets rewritten to the five-activity hour; `WEEK8_v2_RUNSHEET.md`
   renamed `WEEK8_RUNSHEET.md` (there is no v1 to distinguish from any more).
 
+## 2026-07-31 — Assistant now confirms K&S writes (and knows what day it is)
+Peter: after creating a task the assistant showed "Completed in 6 steps" plus a
+reasoning trace and nothing else — no statement, no link, no way to tell a
+silent success from a silent failure. Three fixes.
+
+**1. The system prompt had NO DATE.** That is why the transcript shows six
+steps of the model triangulating "today" from task due dates and ledger
+entries before guessing. `contextBuilders.ts` now appends
+`TODAY: <weekday> <date> (<iso>), Australia/Sydney` plus an instruction to
+resolve relative dates from it and **never** infer the date from data it has
+read — matter dates are scenario data, not today. This alone removes most of
+the flailing on "due next Friday".
+
+**2. Writes return a link.** `ksMatterLink(matterId)` →
+`/workspace/dashboard/matter/<id>` (the Rose shell path, NOT `/firm`, which
+would drop the user out of the sidebar). Every one of the 13 write functions
+now returns `{ ...row, link, confirmation }` so the model has a real URL and a
+ready-made sentence rather than inventing either.
+
+**3. `KS_SYSTEM_PROMPT`** in `chat/tools/ksTools.ts`, spliced into both
+branches of `buildSystemPrompt()`. Requires the final answer to state what
+changed in ordinary prose outside any reasoning, quote back the specifics
+(title, assignee, hours, due date), use the tool's `link` verbatim as a
+markdown link, and say so plainly when a write FAILED rather than describing
+an intended action as though it happened. Also explains the append-only rule
+so a refusal on NexaCare is reported, not retried.
+
+Note `npx tsx` cannot transform in the sandbox, so the prompt assembly was
+verified statically (both branches of buildSystemPrompt include the section)
+rather than by executing it.
+
 ## 2026-07-31 — Admin model allow-list now binds every non-admin, everywhere
 Peter asked me to confirm the Admin → allowed-models setting applies to all
 non-admins on all features. It did not, in two ways. Both fixed.

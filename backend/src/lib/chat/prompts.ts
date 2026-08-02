@@ -1,4 +1,5 @@
 import { JADE_SYSTEM_PROMPT } from "./tools/jadeTools";
+import { KS_SYSTEM_PROMPT } from "./tools/ksTools";
 import { VERIFICATION_SYSTEM_PROMPT } from "./tools/verificationTools";
 
 const SYSTEM_PROMPT_BEFORE_RESEARCH = `You are Rose, an AI legal assistant for lawyers and legal professionals. Help analyze documents, answer legal questions, and draft legal documents.
@@ -82,8 +83,8 @@ GENERAL GUIDANCE:
  */
 export function buildSystemPrompt(includeResearchTools = true): string {
   return includeResearchTools
-    ? `${SYSTEM_PROMPT_BEFORE_RESEARCH}\n\n${JADE_SYSTEM_PROMPT}\n\n${VERIFICATION_SYSTEM_PROMPT}\n${SYSTEM_PROMPT_AFTER_RESEARCH}`
-    : `${SYSTEM_PROMPT_BEFORE_RESEARCH}\n\n${SYSTEM_PROMPT_AFTER_RESEARCH}`;
+    ? `${SYSTEM_PROMPT_BEFORE_RESEARCH}\n\n${JADE_SYSTEM_PROMPT}\n\n${VERIFICATION_SYSTEM_PROMPT}\n\n${KS_SYSTEM_PROMPT}\n${SYSTEM_PROMPT_AFTER_RESEARCH}`
+    : `${SYSTEM_PROMPT_BEFORE_RESEARCH}\n\n${KS_SYSTEM_PROMPT}\n\n${SYSTEM_PROMPT_AFTER_RESEARCH}`;
 }
 
 export const SYSTEM_PROMPT = buildSystemPrompt(true);
