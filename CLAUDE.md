@@ -348,6 +348,28 @@ Two causes, both fixed:
 
 **Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.
 
+## 2026-08-02 — `/version` marker + K&S build output untracked
+**`GET /version`** on the backend (unauthenticated) reports
+`{commit, branch, deployed_at, started_at}` from Railway's
+`RAILWAY_GIT_COMMIT_SHA`. Added because on 2 Aug there was no way to tell from
+outside whether a backend change had reached production — `/health` only says
+the process is up. Confirm a deploy with:
+```
+curl -s https://rose-lawyer-production.up.railway.app/version
+```
+and compare `commit` with `git rev-parse HEAD`.
+
+**Frontend equivalent:** none needed — the Next build already serves
+`/BUILD_ID`, and the decisive check for the assets-only failure is that a
+Worker-rendered route returns 200 (`/library`) while a nonsense path returns
+404. If both 404, the Worker has no script.
+
+**`frontend/public/firm/` is now gitignored** and untracked (90 files removed
+from the index). It is K&S build output staged by `npm run build:firm`, which
+runs on every `npm run build` / `npm run deploy` / `Cutover K&S.command`, so it
+regenerates from `ks-frontend` and never needs to be in git. Tracking it put
+~100 hashed bundles into every diff and buried real changes.
+
 ## 2026-08-02 — THE REAL CAUSE: Cloudflare Workers Builds was deploying on push
 The 31 Jul "assets-only Worker" outage recurred on 2 Aug after two pushes. My
 31 Jul diagnosis ("almost certainly a bare `wrangler deploy`") was **WRONG**,

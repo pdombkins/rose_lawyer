@@ -202,6 +202,37 @@ app.use("/ks", ksRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+/**
+ * /version — what is actually deployed right now.
+ *
+ * WHY THIS EXISTS
+ * On 2 Aug we could not tell from outside whether a backend change had reached
+ * production. `/health` says the process is up, not what code it is running,
+ * so confirming a deploy meant guessing from behaviour or waiting. Worse, the
+ * frontend had twice been deployed WITHOUT its Worker script, and the only tell
+ * was a 404 on a page that should render.
+ *
+ * Railway injects RAILWAY_GIT_COMMIT_SHA at build time. Reporting it makes
+ * "is this deployed?" a five-second question with a definite answer.
+ *
+ * Unauthenticated on purpose: it exposes a commit SHA and a start time, which
+ * are not secrets, and a check you have to authenticate for is a check nobody
+ * runs. Deliberately does NOT report env vars, versions of dependencies, or
+ * anything about the database.
+ */
+const STARTED_AT = new Date().toISOString();
+app.get("/version", (_req, res) =>
+  res.json({
+    commit:
+      process.env.RAILWAY_GIT_COMMIT_SHA ??
+      process.env.GIT_COMMIT_SHA ??
+      "unknown",
+    branch: process.env.RAILWAY_GIT_BRANCH ?? null,
+    deployed_at: process.env.RAILWAY_DEPLOYMENT_CREATED_AT ?? null,
+    started_at: STARTED_AT,
+  }),
+);
+
 app.listen(PORT, () => {
   console.log(`Rose backend running on port ${PORT}`);
 });

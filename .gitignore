@@ -32,3 +32,9 @@ scripts/competitor-scan/last-scan.log
 scripts/competitor-scan/register.json
 scripts/competitor-scan/reports/
 .fuse_hidden*
+
+# K&S build output, staged into the Rose frontend by `npm run build:firm`.
+# Regenerated from ks-frontend on every build (and by `npm run deploy` and
+# `Cutover K&S.command`), so tracking it only churned ~100 files of hashed
+# bundles into every diff. Nothing here is source.
+frontend/public/firm/
