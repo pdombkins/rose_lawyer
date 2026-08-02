@@ -426,6 +426,46 @@ Host github.com
 ```
 If a push ever fails this way again on a new machine, that is the cause.
 
+## 2026-08-02 — Assistant created a DUPLICATE task instead of amending
+Peter created "Doument review" on Group A: CloudTech, then said "set the due
+date for this task". The assistant called `ks_create_task` a **second time**
+and reported success. Two identical tasks, both reported as wins. The tool
+description already said "use ks_list_tasks first to avoid duplicating an
+existing task" — the model ignored it. **An instruction the model may skip is
+not a control.**
+
+- **Hard guard**: `assertNoDuplicateTask()` in `ksWrites.ts`. A create whose
+  title already exists on that matter (case-insensitive) is REFUSED, and the
+  error carries the existing task's id + status + due date so the model's next
+  move is obvious. Scoped to the matter, so two groups may each have their own
+  "Document review". Escape hatch `allow_duplicate: true` for the genuine case;
+  the schema explicitly tells the model not to use it to work around the error.
+- **Prompt**: new AMEND, DO NOT RE-CREATE paragraph at the top of
+  `KS_SYSTEM_PROMPT` — a change to an existing record (including one created
+  earlier in the same conversation) uses the matching `ks_update_*` tool; find
+  the id with `ks_list_tasks` first if you don't have it; "creating a duplicate
+  is a failure even when the tool call succeeds".
+- **Confirmations now state the id.** `ksCreateTask` returns `… (id <uuid>). To
+  change this task later, use ks_update_task with id <uuid>.`; `ksUpdateTask`
+  lists the changed field names and says "No new task was created." The id was
+  always in the returned row — it just never reached the visible answer, so a
+  follow-up had nothing to bind "this task" to.
+- Cleanup: duplicate `acd63bd1` deleted (verified first: 0 assignments, 0 time
+  entries, 0 documents).
+
+### "next Friday" resolved a week late — and agents had NO date at all
+Asked on Sunday 2 Aug, the model set the due date to Friday **14** Aug.
+Australian usage: a bare weekday means the next one to occur, i.e. 7 Aug.
+- The date block moved out of `contextBuilders.buildMessages` into
+  **`todaySection()` in `chat/prompts.ts`**, and now spells out the weekday rule
+  ("the NEXT occurrence … only the following week if the user says so
+  explicitly") and requires the resolved date be stated in full so a wrong read
+  costs one line to correct.
+- **`buildRolePrompt` now includes it too.** The agent runtime never had the
+  date — `buildRolePrompt` doesn't go through `buildMessages` — yet agent steps
+  are exactly what create K&S tasks and calendar events from "due next Friday".
+- Live data corrected: the surviving task's due date moved 14 Aug → 7 Aug.
+
 ## 2026-07-31 — rose.lawyer served the K&S site (assets-only Worker)
 **Symptom:** `rose.lawyer/` returned the Kendry & Slate marketing shell,
 `/library` 404'd, `/firm` was fine. Looked like the domain had been taken over

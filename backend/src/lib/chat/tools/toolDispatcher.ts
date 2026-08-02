@@ -1155,6 +1155,7 @@ export async function runToolCalls(
                     ? (args.estimated_total_hours as number)
                     : undefined,
                 assigned_to_name: str("assigned_to_name"),
+                allow_duplicate: args.allow_duplicate === true,
               }),
             );
             break;

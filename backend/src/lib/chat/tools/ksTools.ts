@@ -209,7 +209,7 @@ export const KS_TOOLS = [
     function: {
       name: KS_TOOL_NAMES.createTask,
       description:
-        "Create a task on a Kendry & Slate matter. WRITES to the practice-management system and requires approval before it runs. Adding is always permitted, including on the shared NexaCare teaching matter. Use ks_list_tasks first to avoid duplicating an existing task, and ks_list_staff for exact fee-earner names.",
+        "Create a NEW task on a Kendry & Slate matter. WRITES to the practice-management system and requires approval before it runs. Adding is always permitted, including on the shared NexaCare teaching matter. Use ks_list_staff for exact fee-earner names. This tool is ONLY for tasks that do not exist yet: to change a task that already exists — including one you created a moment ago — use ks_update_task. A create whose title already exists on the matter is refused and returns the existing task's id.",
       parameters: {
         type: "object",
         properties: {
@@ -234,6 +234,11 @@ export const KS_TOOLS = [
             type: "string",
             description:
               "Optional fee earner to own the task (e.g. 'Aisha Rahman'). Must match exactly one person.",
+          },
+          allow_duplicate: {
+            type: "boolean",
+            description:
+              "Only set true when the matter genuinely needs a second, separate task with a title that already exists. Never set it to work around the duplicate error after being asked to change an existing task — use ks_update_task instead.",
           },
         },
         required: ["matter_id", "title"],
@@ -496,14 +501,23 @@ export const KS_TOOLS = [
 /**
  * Told to the model whenever K&S tools are available.
  *
- * The problem this fixes: after successfully creating a task, the assistant
- * ended its turn with nothing but "Completed in 6 steps" and a reasoning
- * trace. The work had happened, but the user had no way to tell — no
- * statement, no link, no way to check. A silent success is indistinguishable
- * from a silent failure.
+ * Two problems this fixes.
+ *
+ * 1. After successfully creating a task, the assistant ended its turn with
+ *    nothing but "Completed in 6 steps" and a reasoning trace. The work had
+ *    happened, but the user had no way to tell — no statement, no link, no way
+ *    to check. A silent success is indistinguishable from a silent failure.
+ *
+ * 2. Asked to "set the due date for this task" immediately after creating one,
+ *    the assistant created a SECOND identical task and reported it as a
+ *    success — leaving the matter with a duplicate. Amending an existing
+ *    record is now stated as a rule, and ksCreateTask refuses same-title
+ *    creates outright, because a rule the model may skip is not a control.
  */
 export const KS_SYSTEM_PROMPT = `KENDRY & SLATE (practice management):
 The ks_* tools read and change real matter data — tasks, assignments, time, calendar, documents.
+
+AMEND, DO NOT RE-CREATE. If the user asks you to change something that already exists — including a record you created earlier in this same conversation ("set the due date for this task", "move that deadline", "reassign it") — use the matching ks_update_* tool with that record's id. Never create a second record to apply a change to an existing one. If you do not have the id, find it with ks_list_tasks (or ks_time_ledger, or the matter's events) before writing anything. Creating a duplicate is a failure even when the tool call succeeds.
 
 AFTER ANY ks_* WRITE, your final answer MUST:
 - State plainly what changed, in one or two sentences of ordinary prose, outside any reasoning. Never let a write be reported only by a step count or a thought process.

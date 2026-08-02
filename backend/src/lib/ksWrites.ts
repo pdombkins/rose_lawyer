@@ -162,6 +162,52 @@ async function resolveFeeEarner(name: string): Promise<{ id: string; full_name: 
 
 const TASK_STATUSES = new Set(["not_started", "in_progress", "completed", "blocked", "on_hold"]);
 
+/**
+ * Refuse a create that would duplicate a task already on the matter.
+ *
+ * WHY THIS IS A HARD GUARD AND NOT A PROMPT.
+ * A user created "Doument review" and then said "set the due date for this
+ * task". The model called ks_create_task a second time instead of
+ * ks_update_task, and the matter ended up with two identical tasks — the
+ * assistant reporting success both times. Nothing in the data distinguished
+ * the second write from a legitimate one, so nothing caught it.
+ *
+ * The tool description already asked the model to check first. It didn't.
+ * Instructions are advisory; this is not. The error deliberately carries the
+ * existing task's id so the model's next move is obvious and correct: update
+ * that task. `allow_duplicate` remains for the genuine case where a matter
+ * really does need two tasks of the same name.
+ *
+ * Scoped to the matter, so two groups may each have their own "Document
+ * review" — only a repeat within one matter is refused.
+ */
+async function assertNoDuplicateTask(
+    matterId: string,
+    title: string,
+    allowDuplicate?: boolean,
+) {
+    if (allowDuplicate) return;
+
+    const { data } = await KS()
+        .from("tasks")
+        .select("id, title, status, due_date")
+        .eq("matter_id", matterId)
+        .ilike("title", title.trim())
+        .limit(1);
+
+    const existing = (data ?? [])[0] as
+        | { id: string; title: string; status: string; due_date: string | null }
+        | undefined;
+    if (!existing) return;
+
+    throw new Error(
+        `A task called "${existing.title}" already exists on this matter (id ${existing.id}, ` +
+            `status ${existing.status}, due ${existing.due_date ?? "not set"}). ` +
+            `To change it — including setting or moving a due date — use ks_update_task with that id. ` +
+            `Only pass allow_duplicate: true if the matter genuinely needs a second, separate task with the same name.`,
+    );
+}
+
 // ── tasks ────────────────────────────────────────────────────────────────
 
 export async function ksCreateTask(
@@ -178,6 +224,7 @@ export async function ksCreateTask(
         due_date?: string;
         estimated_total_hours?: number;
         assigned_to_name?: string;
+        allow_duplicate?: boolean;
     },
 ) {
     await assertMatterWritable(userId, args.matter_id);
@@ -185,6 +232,7 @@ export async function ksCreateTask(
     if (args.status && !TASK_STATUSES.has(args.status)) {
         throw new Error(`status must be one of: ${[...TASK_STATUSES].join(", ")}`);
     }
+    await assertNoDuplicateTask(args.matter_id, args.title, args.allow_duplicate);
 
     const assignee = args.assigned_to_name
         ? await resolveFeeEarner(args.assigned_to_name)
@@ -218,9 +266,13 @@ export async function ksCreateTask(
         ...data,
         assigned_to: assignee?.full_name ?? null,
         link: ksMatterLink(args.matter_id),
-        confirmation: `Created task "${data.title}"${
+        // The id is stated in the confirmation, not just carried in the row,
+        // so a follow-up like "set the due date for this task" has something
+        // concrete to bind to and calls ks_update_task rather than creating
+        // the task a second time.
+        confirmation: `Created task "${data.title}" (id ${data.id})${
             assignee ? ` assigned to ${assignee.full_name}` : ""
-        }${args.due_date ? `, due ${args.due_date}` : ""}.`,
+        }${args.due_date ? `, due ${args.due_date}` : ""}. To change this task later, use ks_update_task with id ${data.id}.`,
     };
 }
 
@@ -277,7 +329,9 @@ export async function ksUpdateTask(
     return {
         ...data,
         link: ksMatterLink((data as { matter_id: string }).matter_id),
-        confirmation: `Updated task "${data.title}".`,
+        confirmation: `Updated task "${data.title}" (id ${data.id}): changed ${Object.keys(patch)
+            .filter((k) => k !== "performed_by")
+            .join(", ")}. No new task was created.`,
     };
 }
 

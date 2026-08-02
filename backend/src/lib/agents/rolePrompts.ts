@@ -4,7 +4,7 @@
  * Org/personal context (C033) is appended by the executor.
  */
 
-import { buildSystemPrompt } from "../chat/prompts";
+import { buildSystemPrompt, todaySection } from "../chat/prompts";
 import type { AgentRole } from "./types";
 
 /**
@@ -45,7 +45,11 @@ export function buildRolePrompt(
     } = {},
 ): string {
     const base = buildSystemPrompt(false);
-    const parts = [base, roleSections(opts.jadeApproved ?? false)[role]];
+    // Agent steps write K&S tasks and calendar events from instructions like
+    // "due next Friday", so they need today's date just as much as chat does —
+    // and they never had it, because buildRolePrompt does not go through
+    // buildMessages.
+    const parts = [base, todaySection(), roleSections(opts.jadeApproved ?? false)[role]];
     if (opts.orgContext?.trim()) {
         parts.push(`ORGANISATION / USER CONTEXT (apply where relevant):\n${opts.orgContext.trim()}`);
     }

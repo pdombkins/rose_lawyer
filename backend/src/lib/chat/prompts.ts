@@ -88,3 +88,41 @@ export function buildSystemPrompt(includeResearchTools = true): string {
 }
 
 export const SYSTEM_PROMPT = buildSystemPrompt(true);
+
+/**
+ * Today's date, told to the model.
+ *
+ * Without this the model has no idea what day it is, so "due next Friday" sent
+ * it hunting through task due dates and time-ledger entries trying to
+ * triangulate "today" — six tool calls of visible flailing before it guessed.
+ * Australia/Sydney because the firm, the matters and the users are all here.
+ *
+ * The weekday rule is spelled out because "next Friday", asked on Sunday
+ * 2 Aug 2026, was resolved to Friday 14 Aug — a week later than intended. In
+ * Australian usage a bare weekday means the next one to occur. Requiring the
+ * resolved date to be stated means a wrong reading costs one line to correct
+ * rather than being discovered on the deadline.
+ *
+ * Lives here, not in contextBuilders, because the agent runtime needs it too:
+ * an agent step that creates a K&S task from "due next Friday" is exactly the
+ * path that gets this wrong, and buildRolePrompt does not go through
+ * buildMessages.
+ */
+export function todaySection(now: Date = new Date()): string {
+  const today = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Sydney",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+  const todayIso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Sydney",
+  }).format(now);
+
+  return `---
+TODAY: ${today} (${todayIso}), Australia/Sydney.
+Resolve relative dates ("next Friday", "in two weeks", "end of month") from this date. Never infer the date from data you have read — matter and task dates are part of a scenario and are not today.
+A weekday on its own ("Friday", "next Friday", "on Tuesday") means the NEXT occurrence of that weekday after today, even when it falls this week. Only read it as the following week if the user says so explicitly ("the Friday after next", "Friday week").
+Whenever you act on a relative date, state the date you resolved it to in full (e.g. "Friday, 7 August 2026") so the user can correct you.`;
+}
