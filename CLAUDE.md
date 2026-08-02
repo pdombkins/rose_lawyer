@@ -348,6 +348,45 @@ Two causes, both fixed:
 
 **Design note:** `MattersList` filters matters by the *persona's* assigned tasks. That is deliberate and stays for students — RLS narrows to their own matter(s) first, so the persona filter only narrows within that. Admins bypass the persona filter only.
 
+## 2026-08-02 — THE REAL CAUSE: Cloudflare Workers Builds was deploying on push
+The 31 Jul "assets-only Worker" outage recurred on 2 Aug after two pushes. My
+31 Jul diagnosis ("almost certainly a bare `wrangler deploy`") was **WRONG**,
+which is why the guard I added to `Cutover K&S.command` never fired — the bad
+deploy never ran on Peter's machine at all.
+
+**Actual cause.** A **Cloudflare Workers Build** was connected to
+`pdombkins/rose_lawyer` and deployed on EVERY push, configured as:
+| Setting | Value |
+|---|---|
+| Build command | **None** — so `opennextjs-cloudflare build` never ran, no `worker.js` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | **`/`** — repo root, not `frontend/` |
+| Non-production branches | Enabled — any branch could deploy |
+
+Builds completed in **0 seconds** (`started_at == completed_at`), the tell that
+no build happened. Deployment history alternated perfectly: manual Wrangler
+deploy (good) → git deploy (broken) → manual → git, all the way down.
+
+**How to detect this without dashboard access:** the GitHub check-runs API.
+`https://api.github.com/repos/pdombkins/rose_lawyer/commits/<sha>/check-runs`
+listed `Workers Builds: rose-lawyer` (app `cloudflare-workers-and-pages`) and
+`Supabase Preview`. Cloudflare's own Settings page also says
+"Variables/Triggers/Logpush cannot be added to a Worker that only has static
+assets" when the script is missing.
+
+**FIXED 2 Aug:** Git repository **disconnected** in Cloudflare (Workers &
+Pages → rose-lawyer → Settings → Build). Deploys are now manual only —
+`npm run deploy` or `Cutover K&S.command`, both of which build properly.
+
+**Also disconnected: Supabase GitHub integration on the OLD K&S project**
+(`kjjjlawgemmqaxgawaoe`). It was pointed at `pdombkins/rose_lawyer` with
+"Deploy to production" ON, i.e. a push to `main` tried to apply migrations to
+the project we migrated OFF. It only ever failed ("Remote migration versions
+not found in local migrations directory"), but the intent was live.
+
+**Nothing automated now watches the repo.** `origin` is HTTPS, so `git push`
+still needs Peter's GitHub credential; nothing else does.
+
 ## 2026-07-31 — rose.lawyer served the K&S site (assets-only Worker)
 **Symptom:** `rose.lawyer/` returned the Kendry & Slate marketing shell,
 `/library` 404'd, `/firm` was fine. Looked like the domain had been taken over
